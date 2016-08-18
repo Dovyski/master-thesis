@@ -1,0 +1,196 @@
+\chapter{Resultados} 
+\label{capitulo:resultados}
+
+Através da utilização de técnicas para geração de conteúdo e relevo, criou-se uma ferramenta capaz de gerar mundos virtuais complexos em tempo real para utilização em jogos 3D. Esse capítulo apresenta uma análise dos resultados obtidos, reforçando-se os pontos positivos e negativos da ferramenta desenvolvida; além disso as principais funcionalidades implementadas são explanadas, com imagens dos resultados e análises de desempenho.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Aspectos gerais da ferramenta}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+A ferramenta desenvolvida possui como característica principal a capacidade de gerar um mundo virtual pseudo-infinito com continentes, oceanos, áreas planas, montanhas, baías, praias e falésias, com enfoque na geração da borda dos continentes. O resultado final pode ser utilizado para a criação de cenários em jogos 3D.
+
+A aplicação foi projetada para ser utilizada como uma API externa, integrável no código-fonte de um jogo ou {\it engine}, para adicionar funcionalidades relacionadas à geração de cenários. Toda a ferramenta foi encapsulada entro de uma única classe que, por sua vez, é composta de diversos outros componentes menores, acessáveis e customizáveis. Para garantir que a ferramenta não fosse intrusiva ao ponto de modificar o fluxo de dados ou de desenho da aplicação na qual ela está integrada, todas as funcionalidades oferecidas podem ser utilizadas separadamente. 
+
+Em um exemplo simples, se a ferramenta está sendo utilizada para o desenvolvimento de um jogo de estratégia no qual um pequeno terreno é necessário, o programador não precisa utilizar as funções de desenho da ferramenta para renderizar o terreno gerado; é possível gerar um mundo com as proporções necessárias e, então, acessar somente o mapa de altura criado. Isso fará com que o código do jogo aproveite-se apenas da funcionalidade de geração de um terreno com variações de relevo, porém não irá alterar a forma como o jogo já havia sendo desenhado na tela, por exemplo. Além disso, é possível que o programador acesse outros dados gerados, como a matriz que define o que é continente e o que é oceano, se o interesse estiver apenas em gerar continentes e mares para o jogo.
+
+%A utilização parcial dos recursos da ferramenta é uma opção, porém, dependendo dos recursos utilizados, pode-se perder algumas funcionalidades inerentes, como é o caso da otimização da malha de terreno através de LOD. Se os métodos de renderização da ferramenta não forem utilizados para que o mundo virtual seja desenhado, por exemplo, então nenhuma redução de polígonos será feita e o programador deverá aplicar suas próprias técnicas para garantir a redução de polígonos desnecessários.
+
+%Visando um escopo de utilização genérico, concentraram-se os esforços de desenvolvimento no método de geração de relevo e nas técnicas de gerenciamento de conteúdo (acesso a um conteúdo infinito criado sob demanda). A ferramenta não apresenta mecanismos de controle e acesso de dados que não estejam intimamente ligados a terreno. Um exemplo de mecanismo extra é a capacidade de renderização de um céu ao redor do terreno gerado; entende-se que essa tarefa é de responsabilidade da aplicação que está utilizando a ferramenta, uma vez que o propósito da mesma está focado no conteúdo do mundo virtual em si, mais propriamente em seu relevo. Outro exemplo de mecanismo extra é a iluminação da cena, cuja única tarefa que a ferramenta realiza nesse aspecto é calcular a normal de cada um dos triângulos da malha do terreno, o que permite que o programador ilumine-a e obtenha um resultado aceitável. Em relação à texturização do terreno, a ferramenta apresenta meios que permitem ao programador customizar as cores da malha, como aplicar uma função de cor em cada um dos vértices antes que esses sejam desenhados na tela. Além disso, é possível também utilizar uma das funcionalidades já embutidas na própria ferramenta para a aplicação de cores no terreno, como a texturização através da utilização de funções de ruído de Perlin.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Avaliação de técnicas e resultados obtidos}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Essa seção tem por objetivo avaliar cada uma das técnicas utilizadas na geração de conteúdo da ferramenta, mostrando os resultados que foram obtidos com cada abordagem. Leva-se em consideração a flexibilidade proporcionada pela ferramenta durante a utilização da funcionalidade e o resultado gráfico alcançado.
+
+É importante frisar que o objetivo da ferramenta, no escopo do presente trabalho, não é a geração de conteúdos reais ou foto-realísticos, mas sim de elementos que possam ser utilizados para a criação de um cenário num jogo 3D. Entende-se por graficamente aceitável todo o resultado obtido que se enquadre dentro de um jogo e não destoe daquilo esperado pelo jogador, como uma montanha composta por ondulações senoidais suaves ao invés de um conjunto de cristas piramidais.
+
+%Todos os testes de desempenho foram realizados num computador Intel(R) Core(TM)2 Duo 1.66Gz, com 2Gb de RAM e uma placa de vídeo NVidia 8600 GT, utilizando-se o Microsoft Visual C++ 2008 Express Edition como IDE de desenvolvimento e o sistema operacional Windows Vista como ambiente de teste.
+
+
+\subsection{Avaliação dos continentes}
+
+Essa seção tem por objetivo analisar os continentes gerados pela ferramenta, além de analisar a técnica utilizada para que essa funcionalidade fosse implementada. Os continentes gerados não são compostos por partes de terra pré-computados; eles são calculados como resultado de um conjunto de ações aleatórias guiadas por uma semente inicial. Variando-se a semente de entrada, é possível gerar continentes com as mais variadas formas, que vão desde um planeta fortemente tomado por faixas de terra até um cenário com ilhas pequenas e esparsas. Utilizando-se um algoritmo de divisão recursiva de um tetraedro, o módulo de geração de continentes cria um mapa que é uma representação plana de um planeta esférico. Conforme pode ser visto na figura ~\ref{fig:analise_continente}, analisando-se os continentes em uma linha horizontal, pode-se perceber que as faixas de terra coincidem nas duas extremidades do plano (direita e esquerda), o que produz um fluxo contínuo de terra. Analisando-se o mapa no sentido vertical, nota-se que as duas extremidades do plano não casam, o que é o comportamento esperado para uma projeção plana de uma esfera. Se o plano descrito fosse utilizado para "embrulhar" uma esfera, haveriam distorções nos continentes localizados próximo aos polos, porém o resultado final seria um planeta esférico com uma continuidade em seus elementos.
+
+\begin{figure}
+\centering
+\resizebox{10cm}{!}{\includegraphics{figuras/torben_simples.png}}
+\caption{Representação 2D dos continentes gerados pela ferramenta}
+\label{fig:analise_continente}
+\end{figure}
+
+Essa característica permite que o mundo virtual gerado simule o que existe no mundo real, no qual uma pessoa que caminhe na linha do Equador irá dar voltas ao redor do planeta vendo o seu conteúdo (relevos, oceanos, etc) se repetir ao londo do tempo. Essa funcionalidade de fazer o mundo virtual simular o comportamento esférico do planeta Terra não foi implementada na ferramenta; o usuário pode andar sobre os continentes gerados como se estivesse caminhando sobre um plano e, ao chegar em uma de suas bordas, ele é impedido de prosseguir.
+
+O algoritmo original desenvolvido por ~\citet{torben} para a geração de continentes foi levemente alterado para que pudesse ser integrado à ferramenta. A modificação principal realizada foi a remoção das informações de altura existentes ao longo dos continentes e oceanos, o que poderia ter sido utilizada como base para a geração do relevo. Embora essa fosse uma funcionalidade interessante, ela foi abandonada em favor da geração de relevo completamente parametrizável e independente de elementos pré-computados. O módulo de geração de continentes, porém, baseia-se inteiramente nas alturas calculadas para poder gerar os continentes, o que exigiu que um passo a mais de pós-processamento fosse incluído no algoritmo para transformar o mapa com informações de altura em um mapa somente com valores indicando o que é terra e o que é mar. Como consequência dessa abordagem, a ferramenta gasta um tempo considerável nas divisões recursivas para gerar os continentes e o seu revelo, porém esse último é completamente descartado ao final do processo. Esse fator aumenta o tempo de geração dos continentes e aplica uma perda considerável no conceito de tempo-real proposto pela ferramenta, porém, mesmo assim, os benefícios associados aos continentes gerados (como continuidade de conteúdo) compensam.
+
+O tempo para a geração dos continentes é diretamente proporcional ao tamanho da macro-matriz especificada. Em testes realizados, a redução da macro-matriz para valores inferiores a {\tt 800x800} rendeu aumentos de desempenho consideráveis. Em contra partida, quanto menor o tamanho da macro-matriz, mais quadrados e lineares serão as linhas da costa de cada um dos continentes, o que pode produzir um resultado gráficos não muito aceitável. Para contornar esse problema, é possível ajustar o algoritmo de geração da costa para que ele faça alterações mais agressivas nas bordas dos continentes, o que irá quebrar a linearidade gerada por uma macro-matriz de baixa resolução. O ajuste desses dois elementos abre um leque de possibilidades, visto que pode-se encontrar um ponto de equilíbrio entre tempo de geração dos continentes e linearidade da costa. A figura ~\ref{fig:charack_final_continentes} mostra os resultados obtidos em relação a continentes e oceanos gerados pela ferramenta.
+
+\begin{figure}
+\centering
+\resizebox{14cm}{!}{\includegraphics{figuras/charack_final_continentes.png}}
+\caption{Continentes e oceanos gerados pela ferramenta}
+\label{fig:charack_final_continentes}
+\end{figure}
+
+
+\subsection{Avaliação do relevo}
+
+O relevo é parte importante do mundo virtual, porém uma abordagem mais aprofundada em relação a esse tópico está fora do escopo do trabalho, visto que o enfoque buscado está na geração de continentes e costas, e não necessariamente no interior dos mesmos (planaltos, planícies, etc). Em relação à geração de relevo na ferramenta, seguindo um protótipo de função pré-definido, o programador pode criar qualquer código para a geração de relevo, o que garante flexibilidade nesse aspecto. A ferramenta possui embutido um gerador de relevo baseado na função de ruído de Perlin, que produz uma paisagem semelhante àquela encontrada no mundo real. A figura ~\ref{fig:charack_final_relevo} ilustra o relevo criado pela ferramenta utilizando-se as funções de geração embutidas.
+
+\begin{figure}
+\centering
+\resizebox{14cm}{!}{\includegraphics{figuras/charack_final_relevo.png}}
+\caption{Relevo gerado pela ferramenta}
+\label{fig:charack_final_relevo}
+\end{figure}
+
+A função de relevo que foi implementada na ferramenta é capaz de gerar paisagem que imitam de forma simples o que é encontrado na natureza, porém a grande maioria dos esforços de desenvolvimento não foram empregadas sobre esse tópico. Como consequência, a ferramenta não possui um grande leque de possibilidades de geração de conteúdos para o interior dos continentes, como cadeias montanhosas, planícies e planaltos. O relevo gerado atualmente é simplista no sentido de não apresentar grandes diversidades geológicas, entretanto se o objetivo da utilização da ferramenta não for criar um terreno rico em diversidade, o objetivo é plenamente atingido.
+
+A geração atual de relevo foi desenvolvida visando-se a obtenção de ondulações de média/baixa frequência nas funções de ruído, o que faz com que não existam cadeias montanhosas pontudas ou depressões abruptas. A baixa frequência nos ruídos da função de geração de relevo faz com que o usuário veja montanhas com um ângulo muito suave de inclinação, além de áreas com poucas ondulações, que podem ser interpretadas como planaltos. A figura ~\ref{fig:charack_final_relevo_plano} ilustra uma área do mundo virtual que possui relevo com baixa frequência.
+
+\begin{figure}
+\centering
+\resizebox{14cm}{!}{\includegraphics{figuras/charack_final_relevo_plano.png}}
+\caption{Área com relevo de baixa frequência}
+\label{fig:charack_final_relevo_plano}
+\end{figure}
+
+Se a função de geração de relevo utilizar frequências muito baixas e o seu espectro de valores for estendido à todo o mundo virtual, as montanhas e ondulações que serão produzidas serão muito suaves. Esse fenômeno acontece porque baixas frequências não criam alterações acentuadas de altura nos polígonos do relevo. Na utilização de altas frequências, a grande quantidade de ruído cria montanhas mais pontiagudas, porém as áreas intermediárias entre elas são muito ondulada, que é o reflexo da propagação de um espectro de valores muito ruidoso para o mundo virtual. Uma das formas de contornar esse problema é replicar a extensão do espectro de valores, ou seja, em vez de utilizar um espectro que cubra o mundo inteiro, utilizar esse mesmo espectro três vezes ao longo do mundo. Isso permite que pouco ruído seja utilizado, porém evita que o relevo resultante tenda ao plano. A ferramenta utiliza essa abordagem para criar um relevo com montanhas consideravelmente onduladas, porém sem áreas de ondulação estranha entre elas. A figura ~\ref{fig:charack_final_relevo_comparacao} ilustra os diferentes tipos de relevo obtidos com a variação do tamanho do espectro de valores.
+
+\begin{figure}
+\centering
+\resizebox{15cm}{!}{\includegraphics{figuras/charack_final_relevo_comparacao.png}}
+\caption{Diversos relevos gerados a partir de diferentes espectros de ruídos. (a) Pouco ruído estendido para o mundo inteiro sem replicação. (b) Pouco ruído replicado 200 vezes. (c) Bastante ruído com replicação de 200 vezes. (d) Bastante ruído sem replicação.}
+\label{fig:charack_final_relevo_comparacao}
+\end{figure}
+
+%Durante a implementação da malha do terreno, observou-se que o desempenho da aplicação caia consideravelmente à medida que o tamanho da área visível pelo usuário era aumentada. Isso pode ser explicado pelo consumo cada vez maior de processamento necessário para que o grande número de polígonos na tela seja renderizado. Para contornar esse problema, utilizou-se o conceito de LOD ({\it Level of Detail}). A técnica de LOD consiste em aumentar a resolução dos elementos que estão mais próximos da visão do usuário e, em contra-partida, reduzir a resolução dos elementos que estão longe (justamente por estarem distantes do observador, esses elementos não são expressivos). Dentre as soluções pesquisadas, encontra-se LOD em bloco ~\cite{ulrich}, para malhas estáticas, LOD contínuo em tempo real de apenas uma passada ~\cite{pozzer}. O funcionamento desse último pode ser visto na figura ~\ref{fig:lod_pozzer}. Nas regiões com maior quantidade de informações (deformações e quinas do desfiladeiro), há uma quantidade muito maior de polígonos do que as regiões com menos informações (as áreas planas ao redor do desfiladeiro).
+
+%\begin{figure}
+%\centering
+%\resizebox{13cm}{!}{\includegraphics{figuras/lod_pozzer.png}}
+%\caption{Terreno renderizado com baixa resolução (a) e alta resolução (b), ambos com aplicação de LOD ~\cite{pozzer}}
+%\label{fig:lod_pozzer}
+%\end{figure}
+
+%A utilização de LOD foi inicialmente implantada na ferramenta, porém a complexidade que essa abordagem agrega às demais partes da aplicação tornaram proibitiva a sua manutenção. Embora um aumento de desempenho através da utilização de LOD seja benéfico, optou-se por bifurcar o código da aplicação e seguir um ramo sem essa otimização. O ramo de código que possui o LOD funcional ainda está disponível e é uma das sugestões de trabalhos futuros.
+
+\subsection{Avaliação da costa}
+
+A geração da costa é composta por dois pilares principais, um de aspecto mais global e outro mais local. No aspecto global, a ferramenta utiliza apenas dados encontrados na MM para criar as linhas que compõem a costa, conforme descrito na seção ~\ref{sec:visaomicromacro}. O resultado final para essa abordagem são costas completamente retilíneas, o que é irreal do ponto de vista do usuário. A figura ~\ref{fig:charack_final_costa_reta} ilustra duas linhas da costa completamente retilíneas.
+
+\begin{figure}
+\centering
+\resizebox{15cm}{!}{\includegraphics{figuras/charack_final_costa_reta.png}}
+\caption{Local de encontro de duas linhas da costa sem a aplicação de qualquer algoritmo de geração de conteúdo extra}
+\label{fig:charack_final_costa_reta}
+\end{figure}
+
+Na abordagem inicial da ferramenta, não se planejou a adição de conteúdos extra às linhas da costa geradas pelo algoritmo de criação do mundo. A primeira ideia desenvolvida era baseada na utilização integral e exclusiva das informações da MM para a geração das linhas da costa, visto que o algoritmo de geração do mundo é capaz de criar costas suaves e convincentes. As proibições de tamanho da MM, porém, minaram essa abordagem e fizeram com que a geração da costa ficasse limitada a linhas muito retas devido à falta de resolução disponível na MM. Embora seja possível encaixar a utilização de costas tão retas em determinados contextos (como em jogos no qual oceanos não são relevantes), isso limita pelo menos pela metade as opções de utilização da ferramenta. Jogos que precisam apresentar uma interação do jogador com o oceano ficariam impossibilitados de utilizar os recursos criados ou teriam de trabalhar em cima dos resultados da ferramenta para contornar o problema da geração de costas muito retilíneas.
+
+A solução encontrada para contornar esse problema foi a adição de conteúdo utilizando uma abordagem local. Diferentemente da criação global, que se baseia somente nas informações amplas da MM, a geração de conteúdo local se concentra em utilizar as informações da MM como sementes para algoritmos de geração de conteúdo. A aplicação desses algoritmos supre a ausência de informações que existente entre o mapeamento de coordenadas do mundo para a MM resultantes da diferença de resolução entre elas. Como consequência, a ferramenta é capaz de gerar novos conteúdos em níveis de resolução diferentes, permitindo inclusive que o programador defina a granularidade do conteúdo a ser gerado. Conforme explicado na seção ~\ref{sec:quebralinearidade}, a utilização de uma função baseada em ruído de Perlin para a geração da costa não limita as curvas que podem ser criadas ao longo da borda dos continentes, o que pode resultar nos mais diversos tipos de configurações para a costa. Aliando-se esse comportamento com à geração de praias de tamanho diferenciado, a ferramenta é capaz de adicionar um certo teor de aleatoriedade ao conteúdo criado, o que tende a imitar com mais realidade a natureza vista no dia-a-dia.
+
+\begin{figure}
+\centering
+\resizebox{15cm}{!}{\includegraphics{figuras/charack_final_costa_1.png}}
+\caption{Pequena baía com rochas}
+\label{fig:charack_final_costa_1}
+\end{figure}
+
+As figuras ~\ref{fig:charack_final_costa_1}, ~\ref{fig:charack_final_costa_2} e ~\ref{fig:charack_final_costa_5} ilustram a criação de pequenas baías em certos locais da costa. Isso acontece porque nesses locais o algoritmo de quebra de linearidade da costa criou braços de terra curvos partindo da linha reta do continente e, ao mesmo tempo, o algoritmo de criação de praias reduziu ao máximo a quantidade de areia encontrada no local. A ferramenta também é capaz de criar golfos, que são baías de grandes proporções, porém não é possível prever o local exato que isso irá acontecer, porque tal resultado depende da combinação de valores e coordenadas que variam sensivelmente ao longo do mundo virtual.
+
+As figuras ~\ref{fig:charack_final_costa_3} e ~\ref{fig:charack_final_costa_4} ilustram a adição de conteúdo à costa retilínea do continente, resultando numa paisagem mais convincente para o usuário. As duas figuras mostram com bastante detalhe a combinação da função de geração de relevo, o diversificador de praias e o algoritmo de quebra de linearidade da costa na criação de conteúdo; a figura ~\ref{fig:charack_final_costa_3} apresenta uma rocha imediatamente à esquerda da falésia principal, resultado obtido a partir de um espectro de ruído que gerou dois pontos principais indicando a existência de terra: o maior sendo a falésia e o menor sendo a rocha grande à esquerda. Além disso, o diversificador de praias removeu a areia na parte de baixo da falésia, porém à esquerda ele fez o processo contrário. Em conjunto, o algoritmo de geração de relevo com replicação de valores criou pontas na extremidade esquerda da falésia.
+
+A figura ~\ref{fig:charack_final_costa_4} apresenta a mesma combinação do algoritmo da figura anterior, porém o resultado obtido variou em função da coordenada do mundo virtual no local. Ao contrário do que aconteceu anteriormente, o diversificador de praias adicionou areia à base da falésia e, à esquerda da imagem, criou uma extensão da praia em forma de "braço". Também à esquerda, o diversificador de praias removeu a areia que fica na base do continente, criando um aspecto menos padronizado de conteúdo. À direita, é possível observar que o algoritmo de geração de relevo criou um declive que termina de forma relativamente suave na praia (relevo de baixa frequência), ao passo que na parte esquerda da imagem o relevo termina de uma forma mais abrupta (relevo de alta frequência).
+
+\begin{figure}
+\centering
+\resizebox{15cm}{!}{\includegraphics{figuras/charack_final_costa_2.png}}
+\caption{Baía de médio porte gerada a partir da criação de um braço de terra originada no continente}
+\label{fig:charack_final_costa_2}
+\end{figure}
+
+\begin{figure}
+\centering
+\resizebox{15cm}{!}{\includegraphics{figuras/charack_final_costa_3.png}}
+\caption{Extremidade de um continente}
+\label{fig:charack_final_costa_3}
+\end{figure}
+
+\begin{figure}
+\centering
+\resizebox{15cm}{!}{\includegraphics{figuras/charack_final_costa_4.png}}
+\caption{Costa de um continente com praias de tamanho variável}
+\label{fig:charack_final_costa_4}
+\end{figure}
+
+\begin{figure}
+\centering
+\resizebox{15cm}{!}{\includegraphics{figuras/charack_final_costa_5.png}}
+\caption{Baía criada a partir da geração de dois braços de terra originados no continente}
+\label{fig:charack_final_costa_5}
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Análise de desempenho}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Todos os testes de desempenho foram realizados num computador Intel(R) Core(TM)2 Duo 1.66Gz, com 2Gb de RAM e uma placa de vídeo NVidia 8600 GT, utilizando-se o Microsoft Visual C++ 2008 Express Edition como IDE de desenvolvimento e o sistema operacional Windows Vista como ambiente de teste.
+
+\begin{figure}
+\centering
+\resizebox{15cm}{!}{\includegraphics{figuras/desempenho_tam_mm.png}}
+\caption{Tempo de geração da MM em função do tamanho da matriz utilizada.}
+\label{fig:desempenho_tam_mm}
+\end{figure}
+
+A figura ~\ref{fig:desempenho_tam_mm} mostra o tempo de geração da MM em função do tamanho da matriz utilizada. O eixo {\tt X} mostra a largura da MM (em pixels) e o eixo {\tt Y} mostra o tempo de processamento necessário para a sua geração (em milisegundos). Observa-se que o algoritmo de geração da MM é sensivelmente afetado pelas dimensões da matriz. O tempo de processamento de uma MM de dimensões {\tt 1300x1300} pixels é próximo a {\tt 17} segundos, ao passo que uma MM de dimensões {\tt 800x800} pixels leva pouco mais de {\tt 6} segundos para ser gerada. Em ambos os casos, tais tempos de processamento não seriam aceitáveis se o processo fosse executado a cada quadro renderizado. O processo de criação da MM, porém, é uma tarefa executada apenas uma vez pela ferramenta, no momento que esta se inicializa. Como consequência pode-se interpretar o gráfico da figura ~\ref{fig:desempenho_tam_mm} como sendo o tempo de inicialização da ferramenta, ou seja, o tempo que ela leva desde que foi iniciada até o ponto na qual ela pode gerar fatias do mundo virtual.
+
+\begin{figure}
+\centering
+\resizebox{14.5cm}{!}{\includegraphics{figuras/desempenho_tam_mm_elementos.png}}
+\caption{Tempo de processamento dos algoritmos envolvidos na geração de uma fatia do mundo virtual (em função do tamanho da MM).}
+\label{fig:desempenho_tam_mm_elementos}
+\end{figure}
+
+A figura ~\ref{fig:desempenho_tam_mm_elementos} mostra o tempo de processamento dos diversos algoritmos envolvidos na geração de uma fatia do mundo virtual, todos em função do tamanho da MM utilizada. Uma nova fatia é gerada toda vez que o usuário se aproxima da borda da fatia gerada previamente, o que obriga a ferramenta a gerar uma fatia nova para que mais conteúdo seja mostrado além do horizonte. As variações de tamanho da MM (mostradas no eixo {\tt X}) afetam diretamente todos os outros algoritmos da ferramenta, tendo em vista que a MM é utilizada como referência para a maioria deles. O tamanho da MM implica, por exemplo, na quantidade de informações que devem ser criadas num terminado local do mundo, como geração de dois blocos contendo uma costa ao invés da geração de conteúdo para apenas um bloco. Os picos presentes no gráfico são provenientes de locais no mundo virtual que possuem grande quantidade de terra. Quanto maior a quantidade de pixels representando terra, maior será o tempo que o algoritmo de geração de praias irá atuar, como no caso do ponto no qual a MM tem tamanho {\tt 700}. Observa-se que o algoritmo de geração de praias é o que mais consome tempo na geração de uma fatia do mundo, visto que para cada pixel analisado, a ferramenta precisa fazer consulta aos pixels vizinhos para determinar se o elemento é ou não uma praia. Observa-se também que o tempo de atuação do algoritmo de geração da costa varia entre {\tt 50} e {\tt 300 ms} e não é sensivelmente afetado pelo tamanho da MM, visto que esse algoritmo não é intimamente ligado ao tamanho da MM para a realização de seus cálculos. A linha mais próxima da base do gráfico mostra o tempo que a ferramenta leva para renderizar um quadro gerado pela ferramenta. Esse tempo é constante e em torno de {\tt 17 ms} porque vários quadros são renderizados a partir de uma mesma fatia; além disso o tamanho da fatia selecionada do mundo não varia ao longo do tempo, então a ferramenta possui sempre a mesma quantidade de vértices para renderizar em cada quadro. A linha do algoritmo de geração do relevo mostra o tempo que a ferramenta leva para calcular o relevo de todos os pontos da fatia sendo mostrada. Como não existem cadeias montanhosas ou planícies, o tempo de geração do relevo é constante e em torno de {\tt 190 ms}.
+
+\begin{figure}
+\centering
+\resizebox{14.5cm}{!}{\includegraphics{figuras/desempenho_tam_slice_elementos.png}}
+\caption{Tempo de processamento dos algoritmos envolvidos na geração de uma fatia do mundo virtual (em função do tamanho da fatia).}
+\label{fig:desempenho_tam_slice_elementos}
+\end{figure}
+
+A figura ~\ref{fig:desempenho_tam_slice_elementos} mostra o tempo de processamento dos diversos algoritmos envolvidos na geração de uma fatia do mundo virtual, porém em função do tamanho dessa fatia. Observa-se que todos os algoritmos envolvidos apresentam um aumento quase linear no tempo de processamento à medida que o tamanho da fatia aumenta, visto que uma fatia maior implica mais pontos a serem analisados para a geração de conteúdo. O algoritmo mais afetado pelo tamanho da fatia selecionada é o gerador de praias. Embora seu tempo de processamento seja praticamente linear, quanto maior a fatia, mais pixels precisam ser analisados para a geração da praia, o que faz com que a ferramenta gaste um tempo considerável nesse passo. Tomando como exemplo o caso no qual a fatia possui tamanho {\tt 500} (o que resulta em {\tt 250.000} vértices na tela), o algoritmo de geração de praia leva quase {\tt 1,8} segundos para analisar todos os elementos e decidir se eles são ou não pertencentes à praia. A figura ~\ref{fig:desempenho_slice_total} apresenta os mesmos dados da figura ~\ref{fig:desempenho_tam_slice_elementos}, porém ao invés de mostrar o tempo de cada algoritmo separadamente, o somatório dos tempos de cada algoritmo é apresentado. Tomando como exemplo o ponto {\tt 500} no eixo {\tt X}, no qual a ferramenta fará a geração de uma porção com dimensões de {\tt 500x500} vértices, o tempo de processamento total chega a quase {\tt 3,5} segundos.
+
+\begin{figure}
+\centering
+\resizebox{13.5cm}{!}{\includegraphics{figuras/desempenho_slice_total.png}}
+\caption{Tempo total de processamento dos algoritmos para geração de uma fatia do mundo virtual (em função do tamanho da fatia).}
+\label{fig:desempenho_slice_total}
+\end{figure}
+
+A ferramenta é afetada diretamente pelo tamanho da MM e da fatia selecionada do mundo virtual, sendo o último o fato mais crítico de desempenho. Quanto maior a fatia a ser renderizada, mais pontos precisam ser analisados e processados, o que consome grande tempo, especialmente para a decisão se esse ponto é ou não praia. Uma MM de tamanho {\tt 800} ou {\tt 900} pixels apresenta um bom desempenho final; uma fatia com tamanho de {\tt 100} a {\tt 200} vértices também apresenta um balanço aceitável entre desempenho e quantidade de conteúdo gerado.

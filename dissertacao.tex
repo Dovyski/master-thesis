@@ -1,0 +1,192 @@
+%
+% exemplo genérico de uso da classe mdtufsm.cls
+%
+\listfiles
+\documentclass[diss]{mdtufsm}
+% um tipo específico de monografia pode ser informado como parâmetro opcional:
+%\documentclass[tese]{mdtufsm}
+% a opção `openright' pode ser usada para forçar inícios de capítulos
+% em páginas ímpares
+% \documentclass[openright]{mdtufsm}
+% para gerar uma versão frente-e-verso, use a opção 'twoside':
+% \documentclass[twoside]{mdtufsm}
+
+\usepackage[latin1]{inputenc}   % pacote para acentuação
+%\usepackage[portuges]{babel}      % pacote para acentuação 
+\usepackage[T1]{fontenc}        % pacote para conj. de caracteres correto
+\usepackage{natbib}
+\usepackage{graphicx}           % pacote para importar figuras
+\usepackage{times}              % pacote para usar fonte Adobe Times
+\usepackage{xspace}
+%\usepackage{mathptmx}          % p/ usar fonte Adobe Times nas fórmulas
+%\usepackage{hyperref}
+%\usepackage[alf,bibjustif]{abntcite}
+\usepackage{ae}
+
+\newcommand{\cluster}{\textit{cluster}\xspace}
+\newcommand{\clusters}{\textit{clusters}\xspace}
+
+%==============================================================================
+% Identificação do trabalho
+%==============================================================================
+\title{Ferramenta para geração em tempo real de bordas de mapas virtuais pseudo-infinitos para jogos 3D}
+
+\author{Bevilacqua}{Fernando}
+
+\course{Programa de Pós-Graduação em Informática}
+\altcourse{Programa de Pós-Graduação em Informática}
+
+\institute{Centro de Tecnologia}
+\degree{Mestre em Informática}
+
+\trabalhoNumero{Dissertação de Mestrado Nº 6}
+
+% orientador e co-orientador são opcionais (não diga isso pra eles :))
+\advisor[Prof.~Dr.]{Pozzer (UFSM)}{Cesar Tadeu}
+%\coadvisor[Prof~Dr]{Pozzer (UFSM)}{Cesar Tadeu}
+
+%\committee[Profª.~Drª]{Charão (UFSM)}{Andrea Schwertner}
+\committee[Prof.~Dr.]{d'Ornellas (UFSM)}{Marcos Cordeiro}
+\committee[Prof.~Dr.]{Clua (UFF)}{Esteban Walter Gonzalez}
+
+% a data deve ser a da defesa; se nao especificada, são gerados
+% mes e ano correntes
+\date{29}{Julho}{2009}
+
+%
+% palavras-chave
+% iniciar todas com letras minúsculas, exceto no caso de abreviaturas
+%
+\keyword{MMO}
+\keyword{mundos virtuais}
+\keyword{geração de terreno}
+\keyword{jogos 3D}
+\keyword{ruído}
+\keyword{geração procedimental}
+\keyword{multifractal}
+
+%% Ordem dos elementos pré-textuais segundo a MDT/UFSM
+%% Capa
+%% Folha de rosto
+%% Folha de aprovação
+%% Dedicatória (opc)
+%% Agradecimentos (opc)
+%% Epígrafe (opc)
+%% Resumo
+%% Abstract
+%% Lista de Ilustrações (opc)
+%% Lista de Tabelas (opc)
+%% Lista de Abreviaturas e Siglas (opc)
+%% Lista de Símbolos (opc)
+%% Lista de Anexos e Apêndices (opc)
+%% Sumário
+
+%%=============================================================================
+%% Início do documento
+%%=============================================================================
+\begin{document}
+
+% folha de rosto
+% às vezes é necessário redefinir algum comando logo antes de produzir
+% a folha de rosto:
+% \renewcommand{\coordname}{Coordenadora do Curso}
+
+%%=============================================================================
+%% Capa e folha de rosto
+%%=============================================================================
+\maketitle
+
+%%=============================================================================
+%% Folha de aprovação
+%%=============================================================================
+\makeapprove
+
+%%=============================================================================
+%% Dedicatoria
+%%=============================================================================
+\chapter*{Dedicatória}
+A minha família e a Marília, meu amor.
+
+%%=============================================================================
+%% Agradecimentos
+%%=============================================================================
+\chapter*{Agradecimentos}
+Primeiramente gostaria de agradecer a Deus por me amparar, me dar sabedoria e saúde para trilhar esse caminho.
+
+Em seguida, gostaria de agradecer a minha família, por ter me apoiado e lutado para que eu tivesse a oportunidade de chegar aqui. Meu muito obrigado a vocês por tudo!
+
+Meu obrigado especial a Marília, meu amor, que sempre esteve ao meu lado durante todos os momentos, bons e ruins. Sem suas palavras e apoio, os desafios que eu passei teriam me derrubado e impedido que eu concluísse esse trabalho. Obrigado pelo seu amor e carinho, por estar ao meu lado e por trazer felicidade e equilíbrio à minha vida!
+
+Obrigado também ao meu orientador, Prof. Cesar Pozzer, por toda ajuda e horas de dedicação gastas comigo. Sempre entendi a sua preocupação para com a qualidade do trabalho, mesmo quando eu parecia não ter tanto tempo para finalizá-lo. Foi um prazer trabalhar com ele durante esses anos. Obrigado também ao Prof. Marcos d'Ornellas, pela ajuda e pelo seu bom senso, ambos foram muito úteis para mim. Obrigado ao pessoal do LaCA, que de alguma forma ou de outra me ajudaram também.
+
+Por fim, mas não menos importante, agredeço aos meus colegas de trabalho da Decadium. O suporte e dedicação, tanto acadêmico quanto profissional, permitiram que eu concluísse esse trabalho. Obrigado por assumirem minhas responsabilidades quando eu estive ausente. Meu obrigado especial ao Vicentini, que me ajudou muito ao longo do mestrado.
+
+%%=============================================================================
+%% Epígrafe
+%%=============================================================================
+\clearpage
+\begin{flushright}
+\mbox{}\vfill
+{\sffamily\itshape
+``Não é possível 9 mulheres gerarem um bebê em 1 mês.''}
+--- \textsc{Frederick Brooks}
+\end{flushright}
+
+
+%%=============================================================================
+%% Resumo
+%%=============================================================================
+\begin{abstract}
+O mercado de jogos para computador vem evoluindo consideravelmente ao longo dos anos. Dentro da categoria de jogos {\it multiplayer}, exitem os jogos {\it massively multiplayer online} (MMO), que são jogos online no qual uma grande quantidade de jogadores interage uns com os outros dentro de um mundo virtual persistente. Em jogos MMO a existência de um mundo virtual persistente é um tópico importante para manter o jogo atrativo e divertido ao jogador. Quanto maior o mundo a ser explorado, tecnicamente mais tempo o usuário passará jogando para conseguir explorar o maior número possível de lugares. A solução proposta neste trabalho é uma ferramenta capaz de gerar bordas para mundos virtuais pseudo-infinitos com continentes, ilhas, prais, falésias e baías ao longo de sua extensão. Utilizando uma combinação de algoritmos e métodos de gerenciamento de conteúdo, como funções de ruído de Perlin, a ferramenta é capaz de criar praias, ilhas/arquipélagos, baías e costas que imitam as paisagens encontradas na natureza. Além disso, a possibilidade de parametrizar cada um desses elementos dá ao desenvolvedor um controle maior sobre o resultado que será obtido. Dentre as inovações apresentadas, estão a criação de um terreno virtual de vastas proporções com enfoque mais detalhado no que diz respeito à geração da costa. Fruto de um aprofundamento nas pesquisas já realizadas na área, o desenvolvimento da ferramenta foi focado em tratar de forma diferenciada a criação de conteúdo para os diversos elementos existentes (como continentes, relevo e costas). A ferramenta é capaz de gerar continentes contendo falésias, praias e rochedos em suas extremidades.
+\end{abstract}
+
+%%=============================================================================
+%% Abstract
+%%=============================================================================
+% resumo na outra língua
+% como parametros devem ser passados o titulo, o nome do curso
+% e as palavras-chave na outra língua, separadas por vírgulas
+\begin{englishabstract}
+{Tool for real-time generation of coastlines for pseudo-infinite virtual worlds for 3D games}
+{Programa de Pós-Graduação em Informática}
+{MMO, virtual worlds, terrain generation, 3D games, noise, multifractal}
+
+Massively multiplayer online (MMO) games are multiplayer games featuring a huge amount of player living in a persistent virtual world. In MMO games the player's experience is mainly influenced by the size and details of the virtual world. Technically the bigger the world is, the bigger is the time the player takes to explore all the places. This work proposes a tool able to generate coastlines for pseudo-infinite virtual worlds with different types of terrain. Using a combination of algorithms and content management methods, such as Perlin noise, the tool is able to create beaches, islands, bays and costlines that imitate the real world landscapes. One of the contributions of the tool is the ability to generate pieces of land focusing on the coastline generation. The development of the present work aimed to handle separately the generation of content for all elements in the world (continents, terrains, etc.). The main point in the work is the coastline generation, not the content inside the continents.
+
+\end{englishabstract}
+
+%%=============================================================================
+%% Lista de figuras
+%%=============================================================================
+\listoffigures
+
+%%=============================================================================
+%% Lista de tabelas
+%%=============================================================================
+%\listoftables
+
+
+%%=============================================================================
+%% Lista de abreviaturas e siglas
+%%=============================================================================
+% o parametro deve ser a abreviatura mais longa
+%\begin{listofabbrv}{AAAA}
+%    \item[API] Application Programming Interface
+%\end{listofabbrv}
+
+%%=============================================================================
+%% Sumário
+%%=============================================================================
+\tableofcontents
+
+\setlength{\baselineskip}{1.5\baselineskip}
+
+\include{texto/introducao}
+\include{texto/revisao}
+\include{texto/planejamento}
+\include{texto/implementacao}
+\include{texto/resultado}
+\include{texto/conclusao}
+\setlength{\baselineskip}{\baselineskip}
+\include{texto/referencias}
+\end{document}

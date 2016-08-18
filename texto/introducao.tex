@@ -1,0 +1,48 @@
+\chapter{Introdução} 
+\label{capitulo:introducao}
+
+\section{Contexto e Motivação}
+
+O mercado de jogos para computador vem evoluindo consideravelmente ao longo dos anos. Desde o lançamento dos primeiros consoles, o poder de processamento de hardware aumentou e novas tecnologias gráficas foram desenvolvidas, o que colaborou no desenvolvimento de jogos com os mais variados temas e estilos. Agrupando-se esses jogos pela forma como o usuário interage, obtém-se dois grandes grupos de jogos: os {\it singleplayer} e os {\it multiplayer}. No primeiro grupo, os jogadores interagem com o jogo de uma forma solitária, ou seja, sem interação com outros seres humanos; embora existam diálogos e interações com personagens do jogo (chamados {\it NPC}s), a interação é realizada através de ações pré-determinadas ou técnicas de inteligência artificial. Já no segundo grupo, os jogadores interagem com NPCs e, também, com outros seres humanos representados por personagens virtuais. A popularidade desse gênero é grande e a interação social entre os jogadores é assunto de pesquisas ~\cite{onlineGaming, ducheneaut}. 
+
+Dentro da categoria de jogos {\it multiplayer}, exitem os jogos {\it massively multiplayer online} (MMO), que são jogos online no qual uma grande quantidade de jogadores interage uns com os outros dentro de um mundo virtual persistente. A interação dos jogadores é dada de várias formas, como batalhas, execução de missões pré-definidas ({\it quests}), busca de recursos, enfim, uma vasta gama de possibilidades sobre um mundo com economia e política próprios. A quantidade de jogadores vinculados a um MMO pode chegar a ordem dos milhões, como é o caso do jogo World of Warcraft~\cite{Blizzard}, com mais de 6 milhões de inscritos ~\cite{vicioEstrutura}.
+
+Em jogos MMO a existência de um mundo virtual persistente é um tópico importante para manter o jogo atrativo e divertido ao jogador. Quanto maior o mundo a ser explorado, tecnicamente mais tempo o usuário passará jogando para conseguir explorar o maior número possível de lugares. Utilizando o jogo World of Warcraft como exemplo, constata-se a existência de um mundo virtual complexo construído em torno de dois planetas diferentes: Azeroth e Outland, sendo o primeiro dividido em dois grandes continentes. Ao longo desses continentes, estão espalhadas várias cidades, dentre elas quatro capitais para cada uma das facções existentes no jogo (aliança e horda). A figura ~\ref{fig:wow_screen1} ilustra o mundo virtual do jogo World of Warcraft. Um outro exemplo de MMO é o jogo EverQuest~\cite{EverQuest}. Nesse jogo, o mundo virtual é dividido em diversas zonas, as quais representam elementos geográficos variados, como cidades, desertos e planícies.
+
+\begin{figure}
+\centering
+\resizebox{12cm}{!}{\includegraphics{figuras/wow_screen1.png}}
+\caption{Ilustração do mundo virtual de World of Warcraft~\cite{Blizzard}}
+\label{fig:wow_screen1}
+\end{figure}
+
+Dada a magnitude de tais mundos virtuais, a criação (e consequente renovação) de cenários torna-se uma tarefa complexa e de proporções consideráveis. Tanto em World of Warcraft quanto em EverQuest, os mundos virtuais apresentam uma diversidade grande de elementos geográficos, como cadeias montanhosas, vales, florestas, campos, cavernas, etc., sendo a grande maioria deles ligados a história do jogo. A criação manual desses mundos virtuais exige uma equipe apta para modelar relevos, ornamentar paisagens, garantir usabilidade do mapa (não criar lugares inatingíveis, por exemplo), criar lugar interessantes aos jogadores, etc.
+
+Em meio a esse contexto, a criação de uma ferramenta capaz de gerar mundos virtuais complexos e de grandes proporções pode ajudar e agilizar o desenvolvimento de jogos 3D ao estilo MMO.
+
+
+\section{Objetivos e Contribuição}
+
+A solução proposta neste trabalho tem por objetivo o desenvolvimento de uma ferramenta capaz de gerar mundos virtuais complexos e de grandes proporções, em tempo real. Através de técnicas de geração de relevo e criação de mapas por interpolação de funções de ruído, a ferramenta proposta é capaz de gerar um mundo virtual com continentes, oceanos, áreas planas, montanhas, baías, praias e falésias, com enfoque na geração da {\bf borda dos continentes}. Todos esses elementos são processados sob demanda à medida que o jogador caminha pelo ambiente virtual. 
+
+Partindo do fato de que o armazenamento em memória da malha de polígonos do mundo completo é proibitiva, a ferramenta gera todos os conteúdo do ambiente sob demanda. À medida que o usuário avança pelo terreno, os elementos que entram para o campo de visão são processados e colocados na memória e, à medida que eles saem do campo de visão, são removidos. Embora a geração dos elementos seja baseada em cálculos aleatórios, se o jogador passar pelo ponto {\tt A} e, em seguida, andar por quilômetros, colocando uma gama completamente diferente de elementos na memória, e ele retornar ao ponto {\tt A}, a mesma paisagem que foi vista na primeira vez será mostrada novamente. A geração de conteúdo, na abordagem sob demanda, permite que o mundo virtual seja tecnicamente infinito.
+
+Além da geração de relevo, a ferramenta também é capaz de criar oceanos e continentes, todos customizáveis. Diferentemente de outros trabalhos relacionados, nos quais a geração de continentes (e suas costas) é uma consequência da geração de relevo, o presente trabalho mostra como sua principal contribuição uma nova abordagem para a geração de conteúdos para mundos virtuais. Nessa abordagem, a geração de continentes, relevo e costas é tratada de forma separada, porém culminando num resultado final único.
+
+A forma dos continentes é definida, em um nível macro, através de um algoritmo de criação de mapas que trabalha projetando pixels em uma esfera, o que resulta num mapa contínuo e sem distorções. A criação da costa, por sua vez, trabalha em um nível micro que utiliza as informações de mais alto nível para criar conteúdos mais refinados e ricos em detalhes. O resultado final apresenta costas com falésias, praias de tamanhos variados, baias e arquipélagos. A figura ~\ref{fig:screen_mundo} ilustra o mundo virtual obtido com a ferramenta.
+
+\begin{figure}
+\centering
+\resizebox{15cm}{!}{\includegraphics{figuras/screen_mundo.png}}
+\caption{Ilustração do mundo virtual gerado}
+\label{fig:screen_mundo}
+\end{figure}
+
+
+\section{Organização do Texto}
+
+Este trabalho está organizado da seguinte forma: no capítulo ~\ref{capitulo:revisao} apresenta-se uma revisão da literatura relacionada à criação de mundos virtuais e geração de relevo através de técnicas diversas. Na primeira metade do capítulo são apresentadas técnicas utilizadas para a representação de terrenos virtuais, bem como algoritmos e métodos para a geração de paisagens que são semelhantes com a natureza do mundo real (como criação de montanhas através da deposição de sedimentos); na segunda metade do capítulo, ferramentas e contribuições semelhantes ao do presente trabalho são analisadas, ressaltando-se tópicos intimamente ligados com a proposta dessa dissertação e que foram utilizados como base para o desenvolvimento dos trabalhos de implementação.
+
+O capítulo ~\ref{capitulo:planejamento} apresenta uma descrição de como a ferramenta está organizada. No capítulo ~\ref{capitulo:implementacao} busca-se destacar os problemas encontrados para a geração de um mundo virtual pseudo-infinito com processamento de conteúdo sob-demanda, bem como as soluções encontradas e implementadas para cada um desses problemas. O capítulo ~\ref{capitulo:resultados} apresenta os resultados obtidos com a ferramenta desenvolvida, com análises de desempenho e ilustração das funcionalidades.
+
+Por fim o capítulo ~\ref{capitulo:conclusao} apresenta as considerações finais do trabalho. Além disso, apresentam-se sugestões de melhora da ferramenta e ideias para a continuidade do trabalho.

@@ -1,0 +1,73 @@
+\chapter{Estrutura da ferramenta} 
+\label{capitulo:planejamento}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Visão geral da ferramenta}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+O objetivo do presente trabalho é o desenvolvimento de uma ferramenta capaz de gerar mundos pseudo infinitos em tempo real. O emprego do termo "pseudo" faz-se necessário devido à limitação física dos computadores atuais, que apresentam um valor máximo possível para números inteiros (sejam eles de 32 ou 64 bits). Se não houvesse limitação física alguma, a ferramenta seria capaz de gerar, de fato, um mundo infinito. A ideia da ferramenta é permitir que programadores utilizem suas funcionalidades para a criação de terrenos em jogos 3D, principalmente MMOs, com a mínima intervenção humana no processo de geração. O tamanho dos terrenos a serem criados deve ser customizável, porém os mapas gerados devem ter como principal característica a magnitude de suas dimensões, que devem chegar à casa dos bilhões de pixels.
+
+Depois que for inicializada, a ferramenta deve permitir que o usuário caminhe livremente pelo terreno criado. À medida que o usuário se move, a ferramenta adiciona novas paisagens dentro do campo de visão através de um processo de geração de conteúdo sob demanda. Se o usuário caminhar em direção ao norte por vários dias e, em seguida, quiser retornar para à sua primeira posição, ele deve ser capaz de ver, na viagem de volta, exatamente a mesma configuração de montanhas e paisagens que ele viu durante a viagem de ida. Além disso, a ferramenta deve ser capaz de gerar 1) continentes com configurações variadas, 2) diferentes tipos de relevo (montanhas, falésias, planícies, etc) e 3) costas que sejam convincentes ao usuário (como praias ao longo da borda dos continentes).
+
+As seções seguintes explicam como a ferramenta, doravante denominada {\it Charack}, foi estruturada para permitir que os objetivos citados fossem atingidos. O texto está organizado de forma a apresentar uma abordagem {\it top-down}: parte-se da explicação sobre a geração de continentes (visão mais ampla) e termina-se com a explicação sobre a geração de relevo para cada um dos vértices a serem desenhados na tela (visão mais específica e pontual).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Análise inicial}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Conforme apresentado na seção ~\ref{sec:mundos}, existem diversos trabalhos na área de geração de mundos virtuais, sejam eles finitos ou infinitos. O trabalho desenvolvido por ~\citet{infinicity} cria uma cidade infinita que é apresentada ao usuário sob demanda à medida que esse passeia sobre o terreno. Esse foi o trabalho inicial de onde nasceu Charack, porém a ideia original foi alterada a fim de que mais conteúdos fossem criados (montanhas, planícies, continentes, etc.), além de ruas e prédios. A criação de conteúdo sob demanda, na qual o usuário só enxerga aquilo que está dentro do seu campo de visão, foi mantida da abordagem original.
+
+O mundo procedimental gerado por ~\citet{LindaOndrej2007} aproxima-se muito do conceito buscado para a criação de conteúdo de Charack. No referido trabalho, um planeta esférico é criado a partir da divisão recursiva de uma forma geométrica e, sem seguida, funções de ruído são aplicadas à malha para a geração de conteúdo. Não existem abordagens separadas para a criação dos continentes e do relevo dentro deles, ou seja, os continentes são resultado da inundação do relevo criado pelas funções de ruído; como consequência, a costa dos continentes também não possui um tratamento diferenciado. A costa surgirá baseada na altura do nível do mar e da quantidade de ondulações presentes no relevo. O mundo criado é esférico e o jogador pode aproximar ou distanciar a câmera do terreno, porém o conteúdo não é gerado sob demanda. Charack foi criado a partir de uma evolução dessa ideia, porém aplicando-se algumas limitações. O mundo criado por Charack trata de forma completamente diferente a geração de continentes, do relevo dentro deles e da costa. Cada um desses elementos possui sua forma de atuar, que permite ao programador customizar detalhes pontuais sem interferir nas demais áreas do mundo. Esse é o caso da criação de prais mais longas na costa sem modificação da estrutura básica do relevo ou do continente na que essa praia está inserida. Além disso, Charack gera o conteúdo sob demanda num mundo com proporções maiores, entretanto sem o uso da abordagem esférica; o mundo criado está contido dentro de um plano.
+
+Em outro trabalho analisado, o terreno criado sofre ação de erosão ~\cite{terrain_generation}. Charack não utiliza esse conceito, porém faz uso de uma ideia semelhante para fazer o casamento dos conteúdos gerados nos diferentes módulos da aplicação. Um exemplo simples é o encontro do relevo do continente com o oceano, no qual a altura de cada vértice é atenuada para que um relevo de praia seja criado.
+
+Por fim o trabalho criado por ~\citet{dollins-thesis} aproxima-se muito do objetivo proposto. Nesse trabalho, um mundo virtual de proporções gigantescas é criado e o seu conteúdo é gerado sob demanda à medida que o usuário se move. O relevo é criado de forma parametrizada e com multi-resolução, ou seja, quanto mais próximo o usuário estiver de um determinado local no mundo virtual, maior será a quantidade de detalhes nesse local. Também não são apresentadas abordagens separadas para a criação de continentes/costa/relevo. O funcionamento da geração de relevo de Charack baseia-se nas ideias desse trabalho (geração sob demanda e parametrizável), porém a criação de continentes e costa é completamente diferente.
+
+Analisando-se cada um dos trabalhos citados, é possível constatar que mundos virtuais de diferentes proporções são gerados, porém em nenhum deles há uma preocupação com a separação dos métodos de geração dos conteúdos (continentes, relevo, costa). Embora existam variações na forma como o relevo é criado, a geração de continentes fica a cargo da ação de um plano de água interceptando o plano de terra. Essa abordagem permite que esforços sejam concentrados na geração de conteúdo do núcleo do mundo, que são as faixas de terra, porém ela tem um aspecto simples em relação aos demais elementos. No que se refere à heterogeneidade de conteúdo, como diferentes configurações de continentes e costa, o resultado final é pobre. A principal ideia e contribuição de Charack é a geração dos diferentes tipos de conteúdo de forma separada, com abordagens agressivas e pontuais em cada um dos tópicos, entretanto criando um resultado único que contempla todos os tópicos. Como a grande maioria dos trabalhos analisados foca na criação de relevo, entende-se que a contribuição de Charack será maior se os esforços forem focados no que diz respeito à geração de continentes e costa.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Estrutura básica}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Para a criação do mundo virtual nos moldes pretendidos, adotou-se uma estratégia hierárquica para a geração de conteúdos. O fluxo de dados de Charack tem início na visão mais ampla do mundo, que são os continentes, evoluindo ao longo do processo até terminar na visão mais específica e pontual, que é a geração de conteúdo para cada um dos vértices que serão desenhados na tela. A figura ~\ref{fig:planejamento_estrutura_basica} ilustra a estrutura básica.
+
+\begin{figure}
+\centering
+\resizebox{8cm}{!}{\includegraphics{figuras/planejamento_estrutura_basica.png}}
+\caption{Estrutura básica para geração de conteúdo}
+\label{fig:planejamento_estrutura_basica}
+\end{figure}
+
+\subsection{Gerador de mapas}
+
+No topo da cadeia encontra-se o gerador de mapas, que é responsável por criar os continentes que existirão ao longo do mundo virtual. Esse módulo é um encapsulamento da solução criada por ~\citet{torben}, que foi descrita na seção ~\ref{sec:geradortorben}. Quando a ferramenta é iniciada, ela utiliza uma semente definida pelo usuário para gerar todos os continentes que existirão no mundo virtual. Depois que os continentes são gerados, as informações sobre os tipos de terreno (terra, agua e costa) são armazenadas em uma matriz, chamada {\bf macro-matriz} (MM), que é utilizada para consulta pelos demais algoritmos da ferramenta. 
+
+\subsection{Gerenciador de fatias}
+
+Seguindo-se pela hierarquia existe o gerenciador de fatias (GF). Ele é responsável por selecionar um trecho do mundo virtual (campo de visão do usuário) e, em seguida, fornecer essa informação ao renderizador através de um {\it heightmap} (mapa de alturas). O trecho selecionado do mundo virtual é descrito como uma \textbf{malha regular}. Para obter as informações necessárias para a criação do {\it heightmap}, o gerenciador de fatias faz uso do gerador de costa (GC), que por sua vez faz uso da MM e do gerador de relevos (GR).
+
+No contexto do GF, não existe informação sobre terra ou água, ele apenas tem conhecimento de um conjunto de vértices do mundo virtual e qual a altura de cada um deles. Utilizando a posição do usuário como guia, o GF realiza o corte do mundo virtual e, para cada um dos vértices coletados, ele faz consultas ao GC para descobrir qual a altura desse vértice.
+
+\subsection{Gerador de relevo}
+
+O gerador de relevo é responsável pela definição da altura que cada vértice que mundo virtual possui. Para calcular esse valor, o módulo utiliza uma combinação das técnicas descrita na seção ~\ref{sec:relevo}, porém a grande maioria dos cálculos está baseada em funções de ruído de Perlin.
+
+\subsection{Gerador de costa}
+
+O gerenciador de costa (GC) irá mapear cada vértice do gerenciador de fatias para a MM e descobrir qual é o tipo de terreno associado. Se o vértice em questão é mapeado para um local na MM que é descrito como água, então o GC atribuirá uma altura igual ao nível do mar para o vértice e, em seguida, irá retorná-lo para o GF. Se o vértice em questão é mapeado para um local descrito como terra (simples), então o GC utilizará as informações do GR para descobrir qual a altura desse vértice, o que definirá qual relevo ele representa. Por fim, se o mapeamento terminar em um terreno descrito como costa, então o GC utilizará sua própria estrutura (em conjunto com a MM) para definir o relevo do vértice.
+
+O mundo virtual gerado possui, tecnicamente, altura e largura definidas pelo tamanho máximo que um inteiro pode suportar, o que torna fisicamente inviável a geração de uma MM com tais proporções. Uma vez que a MM é menor que o mundo virtual, uma entrada {\tt (i,j)} dela corresponde a diversos vértices dentro do mundo virtual. A figura \ref{fig:mapeamento_macro} ilustra o mapeamento da MM para o mundo virtual.
+
+\begin{figure}
+\centering
+\resizebox{8cm}{!}{\includegraphics{figuras/mapeamento_macro.png}}
+\caption{Mapeamento da MM para o mundo virtual: cada vértice da MM é mapeado para diversos vértices no mundo virtual.}
+\label{fig:mapeamento_macro}
+\end{figure}
+
+Observando-se a figura é possível constatar que quanto menor for a MM, mais vértices do mundo virtual serão mapeados para uma mesma entrada. Se o mundo virtual tiver dimensões {\tt 1000x1000} e a MM {10x10}, por exemplo, isso quer dizer que para cada vértice da MM existem 100 vértices no mundo virtual; se um desses vértices da MM for do tipo costa, então existirá uma área de {100x100} vértices no mundo virtual que precisa ser uma costa. É exatamente nesse ponto que o GC atua no que diz respeito à geração de conteúdo para a costa; quando qualquer um dos vértices dessa área em especial chegar aos cuidados do GC, ele irá trabalhá-los e retornará ao renderizador informações diferentes das originais, o que permitirá  que uma costa seja desenhada na tela, não uma área inteiramente preenchida por terra ou por água.
+
+\subsection{Renderizador}
+
+O renderizador é responsável por renderizar na tela o {\it heightmap} criado nas demais fases do processo. O resultado final é desenhado como uma malha de triângulos que é texturizada conforme a altura de cada vértice.

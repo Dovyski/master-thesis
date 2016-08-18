@@ -1,0 +1,286 @@
+\chapter{Implementação} 
+\label{capitulo:implementacao}
+
+%-- falar que a implementação está baseada em diversos problemas-chave da dissertação, como o gerenciamento de memória, relevo que não pode ser previsto, montanhas que não é possível ver por causa do view frustum, etc.
+
+A ideia original do trabalho foi desenvolver um mundo virtual. Dentre as funcionalidades previstas, encontravam-se a divisão do terreno em relevos específicos (desertos, florestas, planícies, etc), cidades/vilas, caminhos entre as cidades, rios e cadeias montanhosas.
+
+Quando o planejamento foi finalizado, a complexidade de determinadas funcionalidades previstas tornou proibitiva a sua implementação. A grande maioria dos problemas encontrados é uma consequência da abordagem de geração dinâmica de conteúdo sob demanda (a medida que o usuário se move, novos elementos são colocados na tela). A Figura ~\ref{fig:prob_demanda} ilustra o problema da geração de conteúdo sob demanda.
+
+\begin{figure}
+\centering
+\resizebox{13cm}{!}{\includegraphics{figuras/prob_demanda.png}}
+\caption{Problema da geração de conteúdo sob demanda.}
+\label{fig:prob_demanda}
+\end{figure}
+
+Partindo do fato que o usuário só consegue enxergar aquilo que está dentro do seu campo de visão, todos os algoritmos de geração de conteúdo, seja para relevo, caminhos ou cidades, precisam levar em consideração única e exclusivamente as informações que estão disponíveis dentro desse campo. Essa abordagem é eficiente para a utilização racional de recursos (processar somente o que o usuário está vendo), porém ela aumenta a complexidade dos algoritmos envolvidos na ferramenta.
+
+Para o algoritmo de geração de cadeias montanhosas, por exemplo, não é possível determinar onde a cadeia termina, visto que o mundo fora do campo de visão tecnicamente não existe ainda e será gerado conforme o usuário avança pelo terreno. Uma abordagem seria utilizar uma função matemática que descrevesse a cadeia montanhosa, porém essa função não deveria depender de um ponto de início e fim, porque eles poderiam inexistir em um determinado momento. Se a função de geração de cadeias montanhosas não dependesse de um ponto de início e fim, ela precisaria, ao menos, depender da posição do usuário no mundo virtual para que o conteúdo correto fosse gerado. Depender de uma localização implicaria que a cadeia montanhosa gerada pela função fosse pré-posicionada no mundo virtual, o que iria contra o conceito de geração de conteúdo sob demanda.
+
+Além disso, os algoritmos são sensivelmente afetados pelo fato de que as informações que eles recebem em um determinado instante podem desaparecer por completo na próxima iteração, visto que o usuário pode se mover e mudar o conteúdo do campo de visão. Utilizando o exemplo da geração de cadeias montanhosas, uma montanha poderia sofrer uma alteração em sua composição de forma abrupta, apenas porque os pontos que estavam sendo utilizados para a geração do relevo mudaram.
+
+Para contornar esses problemas e focar os esforços de desenvolvimento em soluções pontuais, a geração do mundo virtual foi dividia em três grandes etapas: terreno infinito, continentes e relevo. A geração de conteúdo sob demanda afeta de forma diferenciada cada uma dessas etapas e a descrição da implementação de cada uma delas, junto com os problemas associados, é descrito nas seções seguintes.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Terreno infinito}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%-- falar que utilizarmos o conceito de view frustum (daquele artigo frances) como base para os trabalhos. Em suma, vou descrever como que a coisa toda funciona: o usuário só enxerga o que está dentro do campo de visão, falar da janela de visualização do mundo, etc
+
+A base para a geração do mundo virtual proposto é a possibilidade do usuário poder andar, de forma infinita, sobre a superfície do mundo e, conforme anda, visualizar novos conteúdos. A medida que o usuário anda, a ferramenta precisa ser capaz de identificar em qual local do mundo o observador se encontra para então gerar os conteúdos à sua volta.
+
+Para solucionar esse problema, utilizou-se uma variação da técnica descrita por ~\citet{infinicity}. Na abordagem em questão, o mundo virtual pseudo-infinito é divido em células quadradas (quadras da cidade) e, à medida que o usuário anda, as células são adicionadas e/ou removidas do campo de visão. O conjunto das células forma uma malha regular de polígonos. Cada célula possui um conteúdo próprio e auto-contido, ou seja, a célula não precisa de informações de vizinhos para gerar o seu conteúdo. Isso garante que as células não entrem em uma dependência recursiva infinita entre elas para conseguirem gerar o seu conteúdo. Além disso, essa abordagem é vantajosa para garantir o uso racional de recursos, uma vez que só serão carregados para a memória os blocos que o usuário realmente consegue ver.  
+
+Para o posicionamento do usuário no mundo virtual, os autores utilizam um vetor 3D no formato {\tt (x,y,z)}. Conforme o usuário se move horizontalmente pelo mundo, as coordenadas {\tt x} e {\tt y} são atualizadas. Se o usuário se move verticalmente, a coordenada Z é alterada. A abordagem utilizada para a ferramenta dessa dissertação baseou-se nesses conceitos. A figura ~\ref{fig:org_coordenadas} ilustra a organização do mundo virtual.
+
+\begin{figure}
+\centering
+\resizebox{10cm}{!}{\includegraphics{figuras/org_coordenadas.png}}
+\caption{Organização do sistema de coordenadas do mundo virtual}
+\label{fig:org_coordenadas}
+\end{figure}
+
+A origem do mundo virtual é o ponto {\tt (0,0,0)} e os eixos que definem o plano horizontal são o {\tt X} e {\tt Z}, sendo a altura controlada pelo eixo {\tt Y}. A distância máxima que o usuário consegue percorrer em qualquer um dos eixos é o número máximo suportado por um inteiro de 32 bits com sinal.
+
+O que o jogador consegue ver na tela em um determinado momento é um pedaço do mundo virtual existente. Esse pedaço foi chamado de {\it view frustum}, ou campo de visão. Diferentemente do que foi feito em  ~\citet{infinicity}, no qual o campo de visão é um cone, o campo de visão da presente ferramenta é um quadrado centrado no usuário. A figura ~\ref{fig:campo_visao} ilustra o funcionamento do campo de visão. A partir da posição {\tt (x, y, z)} do usuário, a ferramenta calcula qual é o conteúdo visualizável ao redor desse ponto e, então, "recorta" essa fatia do mundo e a desenha na tela. Ao chegar na borda limite do mundo, que pode ser a distância máxima de um eixo, por exemplo, o usuário é impedido de avançar e nenhum conteúdo é mostrado além da borda limite. O campo de visão em forma de quadrado centrado no usuário foi escolhido ao invés do campo em cone por questões de desempenho. Mesmo considerando-se que visão em cone permite a geração seletiva do conteúdo que está sendo visualizado pelo usuário, o custo para a geração desse conteúdo na ferramenta é muito alto, tento em vista os diversos algoritmos e passos necessários para a criação dos dados. Uma visualização em cone seria proibitiva porque à cada movimento da visão do usuário, novos pontos teriam de ser calculados, e pontos já calculados teriam de ser descartados. Uma visão em forma de quadrado centrado no usuário permite que a ferramenta só dispare uma nova sequência de geração de conteúdo quando o usuário se aproximar da borda do campo de visão, momento no qual o ambiente ao redor do usuário é recalculado. Assumindo que a área visível é grande o suficiente para entreter o usuário, enquanto esse se movimentar próximo ao centro do quadrado, nenhum cálculo novo de geração de conteúdo será realizado.
+
+\begin{figure}
+\centering
+\resizebox{8cm}{!}{\includegraphics{figuras/campo_visao.png}}
+\caption{Campo de visão do usuário: a área visualizada corresponde a uma fatia do mundo virtual existente.}
+\label{fig:campo_visao}
+\end{figure}
+
+Inicialmente planejou-se a utilização de quadrados para dividir o mundo virtual em células, conforme é feito na outra abordagem citada anteriormente. A utilização de células garantiria que o mundo virtual fosse subdivido em blocos menores, o que viabilizaria um melhor controle sobre o que o usuário consegue ver no seu campo de visão e, também, um melhor controle sobre a geração de conteúdo. O maior problema encontrado nessa abordagem, que foi a razão pela qual ela foi abandonada, é a dependência que as células precisam ter entre si para que o terreno infinito seja gerado.
+
+Utilizando o exemplo da geração de relevo, que é tratada em mais detalhes na seção ~\ref{sub:relevo}, se o mundo virtual fosse dividido em células, cada uma delas deveria possuir um relevo perfeitamente nivelado com a célula vizinha, caso contrário o relevo gerado teria diversos "degraus". Analisando o problema um pouco mais a fundo, no caso da geração de montanhas, por exemplo, se na metade de uma célula a ferramenta decidisse que uma cadeia montanhosa deveria começar, a célula vizinha deveria obrigatoriamente ter a continuação dessa cadeia montanhosa, caso contrário a montanha em questão seria fatiada pela metade. Uma das formas de corrigir esse problema é adicionar um nível mínimo de dependência entre as células: o conteúdo de uma célula é gerado com base nas informações da própria célula e também com base em alguma dica da célula vizinha. No exemplo da cadeia montanhosa, a célula vizinha ao começo da cadeia saberia que o conteúdo que ela deve gerar é a continuação da cadeia montanhosa, visto que a sua célula vizinha possui o começo da cadeia.
+
+Essa dependência de conteúdo gera um encadeamento recursivo infinito entre as células. Se a célula {\tt A}, por exemplo, for gerar o seu conteúdo, ela irá fazer isso com base nas suas informações e também com base nas informações de sua célula vizinha, {\tt B}. A célula {\tt B}, por sua vez, só poderá informar a {\tt A} o seu próprio relevo quando ela o gerar; para gerar o seu relevo, ela precisa das suas informações e das informações da sua vizinha, {\tt C}, e {\tt C} precisa de {\tt D} e assim por diante. Dessa forma, para gerar o conteúdo de {\tt A}, a ferramenta teria que obrigatoriamente percorrer todas as células do mundo virtual.
+
+Uma possível saída para esse problema da recursão infinita é definir um nível de consulta de informações. Embora essa abordagem limite o nível de consulta entre as células vizinhas, ela não soluciona o problema de continuidade de conteúdo. Se o conteúdo de {\tt A} for gerado com seis níveis de recursão, por exemplo, quando o usuário se mover, novas células vizinhas serão consultadas para a geração do conteúdo; se a última célula que {\tt A} consultou foi {\tt G}, depois que o usuário se mover, {\tt G} terá novas informações para o seu relevo, porque agora ela pode solicitar informações de suas vizinhas. Isso fará com que todas as células dependentes de {\tt G} mudem o seu conteúdo, o que resultaria em um relevo diferente a cada movimentação do usuário. Em virtude da complexidade descrita e dos problemas mapeados, a abordagem de divisão do mundo virtual em células foi abandonada e substituída pelo modelo de campo de visão quadrado.
+
+\subsection{Renderização de conteúdo}
+
+Depois que o modelo de controle da geração de terrenos infinitos foi definido, iniciaram-se os trabalhos de visualização das informações na tela. Embora o mundo virtual tenha coordenadas pseudo-infinitas, o máximo de conteúdo que o usuário enxerga na tela é a área do campo de visão, que possui sempre o mesmo tamanho e coordenadas de desenho. A figura ~\ref{fig:render_campo_visao}(a) ilustra as coordenadas envolvidas no desenho do conteúdo do campo de visão.
+
+\begin{figure}
+\centering
+\resizebox{13cm}{!}{\includegraphics{figuras/render_campo_visao.png}}
+\caption{Mapeamento das coordenadas do mundo virtual para as coordenadas de desenho da tela}
+\label{fig:render_campo_visao}
+\end{figure}
+
+O plano {\tt A} representa o mundo virtual gerado pela ferramenta, enquanto o plano {\tt B} representa a fatia do mundo virtual que o usuário consegue visualizar. A medida que o usuário se move, o centro do campo de visão é alterado e o usuário passa a ver novos conteúdos. Independente da movimentação que o usuário faça, o plano {\tt B} pode sempre ser mapeado como se estivesse na origem, porque ele é apenas uma fatia do mundo virtual. O que a ferramenta faz para desenhar esse conteúdo na tela é mapear essa faria para um {\it heightmap} descrito como uma malha regular. Depois que o mapa de altura é definido, as coordenadas dos eixos {\tt X} e {\tt Z} do mundo virtual que foram utilizadas durante a extração não são mais relevantes para o processo de desenho. Dessa forma, depois de extraído, o mapa de altura possui sempre as mesmas coordenadas nos eixos {\tt X} e {\tt Z}, que são as coordenadas de desenho da tela. A única informação do mundo virtual que é mantida é a altura de cada um dos pontos da malha do mapa de altura, conforme ilustra a figura ~\ref{fig:render_campo_visao} (b). A figura ~\ref{fig:charack_merge_wireframe} mostra a renderização final da malha regular visualizada pelo usuário, incluindo uma visão em wireframe.
+
+\begin{figure}
+\centering
+\resizebox{13cm}{!}{\includegraphics{figuras/charack_merge_wireframe.png}}
+\caption{Renderização da malha regular visualizada pelo usuário. À direita, mescla da mesma malha renderizada em wireframe.}
+\label{fig:charack_merge_wireframe}
+\end{figure}
+
+Para texturizar o conteúdo renderizado, utiliza-se um conjunto de imagens gerenciadas através da linguagem de {\it shaders} GLSL ~\cite{glsl}. Baseado na altura do pixel sendo desenhado, calcula-se o peso que cada uma das texturas possui naquele local e, em seguida, cria-se uma interpolação delas. Cada uma das texturas do conjunto possuem um intervalo de altura na qual podem atuar: areia para alturas baixas, pedra para alturas médias, cascalho para alturas intermediárias e grama para as alturas maiores que as já estipuladas. Um exemplo de funcionamento desse método é a texturização da areia da praia. Nesse caso, todos os pixels da praia possuem uma altura que faz com que a textura de areia tenha o peso máximo, ao passo que as demais alturas tenham um peso zero. O resultado disso é que para os pixels da praia a interpolação do conjunto de texturas produz uma textura que é composta quase integralmente por areia. À medida que a altura da praia aumenta, o peso da textura de areia diminui e o peso da textura de pedra aumenta. O resultado produzido é uma transição suave entre a areia da praia e as pedras da costa. A figura ~\ref{fig:set_texturas} demonstra o conjunto de texturas existentes.
+
+\begin{figure}
+\centering
+\resizebox{14cm}{!}{\includegraphics{figuras/set_texturas.png}}
+\caption{Conjunto de imagens utilizadas para texturização do terreno}
+\label{fig:set_texturas}
+\end{figure}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Relevo}
+\label{sub:relevo}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+A ideia original do presente trabalho foi desenvolver um mundo virtual capaz de apresentar diversos tipos de relevos, como cadeias montanhosas, planícies, vales, desertos, florestas, etc. A complexidade associada à geração de cada um desses elementos varia conforme o nível de realismo esperado e o nível de dinamismo do conteúdo gerado. Quanto mais presente for o conceito de geração de conteúdo sob demanda, mais difícil torna-se a tarefa de gerar conteúdos conexos e sem falhas abruptas na malha de relevo. As seções seguintes apresentam os problemas encontrados e a solução escolhida para a geração de relevo.
+
+\subsection{Problemas na geração de relevo sob-demanda}
+
+Mantendo-se a meta de gerar o conteúdo da forma mais dinâmica possível (sem elementos pré-posicionados, por exemplo), o primeiro grande problema encontrado durante o desenvolvimento do relevo do mundo virtual foi a forma como ele deveria ser gerado. Considerando que a ferramenta é capaz de criar um mundo pseudo-infinito, a geração de uma malha regular tão grande, de uma só vez, é computacionalmente inviável; a quantidade de vértices que precisariam ser armazenados tornaria o consumo de armazenamento da aplicação muito grande, o que poderia ser um empecilho para a utilização da ferramenta. Além do problema de armazenamento, outro tópico importante que foi considerado é a geração de conteúdo contínuo, ou seja, um relevo que não tenha falhas abruptas de continuidade, como uma cadeia montanhosa que termina inesperadamente. Partindo do fato que o mundo virtual não poderia ser divido em células, tendo em vista os diversos problemas de continuidade de conteúdo, a solução para a geração de relevo deveria basear-se apenas nas informações disponíveis no campo de visão. Embora seja possível gerar relevo utilizando-se como valores de entrada somente as informações do campo de visão, novos problemas de continuidade foram encontrados.
+
+Supondo-se que a geração de relevo utilize a posição do vértice no mundo virtual como semente para uma função pseudo-aleatória de cálculo de relevo; supondo-se também que a geração de montanhas, por exemplo, é definida por pontos chave que indicam a espinha dorsal da cadeia montanhosa. Se o algoritmo se basear apenas nesses pontos chave para calcular as montanhas, o usuário só irá enxergar a montanha quando um desses pontos chave entrar dentro do campo de visão. Isso irá causar falhas abruptas de continuidade, porque se o usuário costear a espinha dorsal da montanha, sem que os pontos chave entrem no campo de visão, ele não verá a cadeia de montanhas, sendo que ele deveria ver um relevo ascendente até o cume dessas montanhas. A figura ~\ref{fig:montanha_fora_campo} ilustra esse problema.
+
+\begin{figure}
+\centering
+\resizebox{14cm}{!}{\includegraphics{figuras/montanha_fora_campo.png}}
+\caption{Geração de conteúdo com base apenas nas informações do campo de visão}
+\label{fig:montanha_fora_campo}
+\end{figure}
+
+
+\subsection{Solução para geração de relevo sob-demanda}
+
+A solução encontrada para a geração de relevo foi utilizar uma função paramétrica que informa a característica de cada um dos vértices do mundo virtual. Nessa abordagem, cada ponto do mundo é utilizado como parâmetro para a função de relevo que, por sua vez, calcula a altura que esse ponto deve ter. Como resultado, tem-se uma função capaz de descrever todo o relevo do mundo virtual, independente do tamanho que ele possua; a quantidade de recursos computacionais que serão utilizados para gerar o conteúdo do campo de visão é diretamente proporcional ao tamanho do campo de visão, não ao tamanho do mundo, visto que a função de relevo utiliza as informações de cada ponto para calcular a sua característica. A figura ~\ref{fig:espectro_func_relevo} ilustra o funcionamento da função de relevo aplicada ao mundo virtual gerado.
+
+\begin{figure}
+\centering
+\resizebox{14cm}{!}{\includegraphics{figuras/espectro_func_relevo.png}}
+\caption{Função de geração de relevo parametrizável e o resultado gerado}
+\label{fig:espectro_func_relevo}
+\end{figure}
+
+Para aumentar a heterogeneidade do relevo gerado, a ferramenta utiliza duas funções de relevo, uma para o eixo {\tt X} e outra para o eixo {\tt Z}. Além de garantir que o relevo gerado não seja perfeitamente simétrico nos dois eixos, essa abordagem permite um maior controle sobre a geração de conteúdo. A altura de cada ponto do mapa é definido pela soma dos resultados de cada uma dessas funções. Durante a escolha dos métodos para geração de relevo, inicialmente utilizou-se uma combinação de funções seno e cosseno, porém o resultado obtido foi muito simétrico e artificial em comparação com o relevo encontrado na natureza. Para melhorar a qualidade do relevo gerado, utilizou-se então uma mescla dos conceitos apresentados nas seções ~\ref{sec:relevo} e ~\ref{sec:mundos}. Na abordagem proposta por ~\citet{infinicity}, o relevo apresentado é plano e a geração de conteúdo resume-se a prédios e ruas, o que não se enquadra por completo com a abordagem escolhida para o presente trabalho; aproveitou-se, então, a técnica de parametrização da geração de conteúdo através da utilização do posicionamento dos elementos como semente para uma função estocástica de geração. Buscou-se, então, um método de ruído capaz de gerar um relevo que fosse ao mesmo tempo controlável e semelhante àquele existente no mundo real. Conforme apontado por ~\citet{LindaOndrej2007}, esse objetivo pode ser atingido através da utilização da função de ruído de Perlin isoladamente ou através da combinação dela com outras técnicas; como pode ser visto nos resultados obtidos pela autora, o relevo gerado possui uma boa qualidade gráfica e custo computacional aceitável. Optou-se, então, por utilizar funções de ruído de Perlin para a geração de ruído.
+
+Para a geração do relevo através de funções de ruído, uma das possíveis abordagens seria aquela proposta por ~\citet{SkyCastle}, que consiste na sobreposição de um mapa de altura base com mapas de ruído pré-computados. Embora essa abordagem produza um relevo relativamente controlável e aceitável, a sua utilização exigiria algumas mudanças no funcionamento do algoritmo original. Na abordagem do autor, o relevo é gerado de uma só vez e para o mundo virtual inteiro, o que seria proibitivo para a ferramenta proposta no presente trabalho. A solução encontrada foi a ferramenta gerar em tempo real mapas de ruído do tamanho exato da fatia do mundo virtual que o usuário está vendo, que é uma malha regular.
+
+Para controlar o nível de perturbação do relevo, como montanhas mais pontudas ou mais suaves, uma possível solução seria a aplicação de efeitos de erosão como foi proposto por ~\citet{terrain_generation}. Partindo do fato que os algoritmos de erosão propostos pelo autor utilizam diversas informações referentes à vizinhança dos pontos, se essa abordagem fosse utiliza para a ferramenta, ela resultaria em má formação do relevo nas bordas da fatia do mundo virtual sendo mostrada. Isso aconteceria porque os vizinhos mais afastados dos pontos que estão na borda não estariam dentro do campo de visão do usuário, o que faria com que o algoritmo de erosão calculasse as alterações com apenas uma parte das informações necessárias; como consequência, toda vez que o usuário se movimentasse, alterações abruptas de relevo poderiam acontecer nas bordas da fatia sendo visualizada. Como saída a essa problema, para garantir um controle sobre o nível de pertubação do relevo utilizou-se apenas as propriedades da função de ruído de Perlin: para a obtenção de relevos mais "enrugados", utilizou-se mais oitavas na função de ruído (o funcionamento das oitavas está descrito na seção ~\ref{sec:perlin}).  
+
+Utilizando a sobreposição de funções de ruído de Perlin para a geração da altura do relevo nos eixos {\tt X} {\tt Z}, alterando-se as oitavas de cada função de ruído para atenuar ou aumentar a pertubação dos resultados, foi possível customizar o relevo e obter resultados satisfatórios.
+
+
+\subsection{Otimização através de conservação de dados}
+
+Depois que o mapa de altura correspondente à fatia do mundo virtual sendo visualizada é gerado, ele é armazenado na memória e em seguida renderizado na tela. Enquanto o usuário não se mover no mundo, a fatia sendo visualizada não será alterada, logo nenhum cálculo relacionado a relevo deverá ser realizado. Se o usuário se move, porém, a fatia do mundo que está sendo visualizada é alterada e novas informações de relevo devem ser calculadas. Embora o usuário tenha se movido, apenas uma pequena parcela dos dados que estão no {\it heightmap} que corresponde à fatia do mundo foram alteradas. Imaginando o {\it heightmap} como uma matriz, se o usuário se move para a direita, uma nova coluna (com dados novos) deve ser adicionada ao final da matriz e, também, a primeira coluna deve ser removida (porque ela saiu do campo de visão); as demais informações da matriz não precisam ser alteradas.
+
+Tomando vantagem desse fato, a ferramenta utiliza um algoritmo de deslocamento de dados para evitar o reprocessamento de todo o {\it heightmap} cada vez que o usuário se move. Dependendo da direção para a qual o usuário está se movendo, a matriz tem suas linhas e colunas deslocadas, e apenas uma nova linha ou coluna precisa ser calculada para que a nova fatia do mundo seja mostrada. Levando-se em consideração que os cálculos necessários para a geração do relevo são custosos, já que envolvem funções de ruído de Perlin e diversas outras operações, trocar o processamento total da matriz pelo processamento de apenas uma linha ou coluna é uma vantagem que aumenta o desempenho da aplicação drasticamente. Em testes preliminares, no qual nenhum tipo de deslocamento de dados era realizado e a matriz era completamente reprocessada a cada movimentação, a aplicação apresentou um desempenho médio de 2.5 FPS numa máquina Intel(R) Core(TM)2 Duo 1.66Gz, com 2Gb de RAM e uma placa de vídeo NVidia 8600 GT. Depois que a otimização por conservação de dados foi aplicada, o desempenho saltou para 53 FPS. Mais informações sobre análise de desempenho podem ser encontradas no capítulo ~\ref{capitulo:resultados}.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Continentes}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%-- falar que utilizamos o  algoritmo maluco do professor dos EUA para fazer a costa. Falar que existe o mundo é gigante o suficiente para fazer com que uma matrix que descreve água/terra seria inviável. Para solucionar esse problema, falar que utilizamos o conceito de isLang local e isLang global. O isLand global dá uma dica se o lugar é água ou terra, e o isLand local utiliza multifractais para fazer o desenho das bordas dos continentes.
+
+%-- É importante frisar que essa seção é onde está a nossa contribuição na pesquisa: mundo pseudo-infinito, com relevo gerado on-the-fly e com costas de continentes com multiresolução.
+
+A geração de continentes e oceanos foi proposta para quebrar a monotonia de uma paisagem composta apenas por terra no mundo virtual, bem como para aumentar o nível de semelhança com as paisagens encontradas na natureza. As seções seguintes apresentam as técnicas utilizadas e os problemas encontrados na geração de continentes.
+
+
+\subsection{Oceano como um plano azul}
+
+ A primeira abordagem utilizada para a geração de água foi uma semelhantes àquela proposta por ~\citet{LindaOndrej2007}, que consiste na adição de um plano azul cortando todos os elementos do mundo virtual na altura do nível do mar. Embora essa abordagem seja muito simples, ela reduz consideravelmente a complexidade dos algoritmos de geração de relevo, uma vez que eles não precisam classificar os vértices como sendo "terra" ou "mar" (teste que é realizado analisando-se a altura do vértice em questão). Como consequência disso, não são necessários campos extras na estrutura de dados do vértice para informar que ele é um vértice do oceano, por exemplo. Além disso, não existem problemas na colorização de partes de terra que possuem relevo abrupto e tem contato com o mar, como uma falésia; no caso da marcação de vértices como "terra" ou "mar", a falésia teria uma interpolação entre a cor do mar e a sua própria cor, o que poderia resultar em uma montanha azul até a sua metade, por exemplo. 
+
+A utilização de um plano azul para a criação do mar limita a geração de continentes à forma que o relevo possui, ou seja, se houver montanhas largas e com um relevo não pontudo, existirão continentes grandes, caso contrário existirão apenas pequenas ilhas, que podem ser apenas o cume de uma montanha. Todo o relevo que ficou posicionado acima do nível do mar ficou visível ao usuário, porém aquele que ficou abaixo desse nível foi excluído da visualização. A menos que seja interessante que o oceano apresente seu próprio relevo submarino, todas as montanhas e planícies que ficaram debaixo d`água foram perdidas, o que reduz a riqueza de detalhes da cena. Em virtude desse problema, optou-se por utilizar uma abordagem mais controlada para a geração de faixas de terra.
+
+
+\subsection{Pré-processamento de faixas de terra}
+\label{sec:faixasterra}
+
+A solução encontrada para garantir que os continentes sejam mais customizáveis foi pré-processar as faixas de terra existentes no mundo e, então, armazenar essa informação para os demais cálculos da ferramenta. Com essa abordagem, a geração de conteúdo sob-demanda foi parcialmente quebrada, uma vez que os continentes serão gerados por completo antes de todos os demais conteúdos, porém isso garante um melhor controle sobre o que é oceano e o que é terra.
+
+A solução encontrada para esse problema foi a criada por ~\citet{torben}, descrita em detalhes na seção ~\ref{sec:geradortorben}. Utilizou-se esse gerador de planetas porque ele possui diversas opções de parametrização, como estipulação da semente que será usada para os cálculos aleatórios, definição da altura/largura do mapa gerado, suavidade das curvas e zoom. Isso aumenta o controle da forma como os continentes serão gerados, que foi a razão principal pela qual optou-se por utilizar uma abordagem diferente de um plano azul para gerar os oceanos e continentes. As figuras ~\ref{fig:torben} {\it (a)} e {\it (b)} ilustram os resultados obtidos com o gerador de planetas de ~\citet{torben}. A figura ~\ref{fig:torben} {\it (c)} mostra um mapa gerado através da mesma técnica, porém apenas duas corem foram utilizadas para o desenho; pixels representando terra são pintados de preto e pixels representando água são pintados de branco.
+
+\begin{figure}
+\centering
+\resizebox{15cm}{!}{\includegraphics{figuras/torben.png}}
+\caption{Planetas aleatórios gerados com diferentes sementes de entrada. (a) e (b) mapas com informações de relevo ~\cite{torben}; (c) mapa mostrando apenas informações sobre terra e mar.}
+\label{fig:torben}
+\end{figure}
+
+A geração do relevo da ferramenta do presente trabalho é feita através da sobreposição dos resultados da função de ruído de Perlin, como está explicado na seção ~\ref{sub:relevo}. Por essa razão, as informações de relevo que são criadas através do gerador de planetas citado são dispensáveis. Em virtude disso, o gerador de planetas foi alterado para gerar um mapa apenas com informações sobre o que é terra e o que é água. A figura ~\ref{fig:torben}{\it (c)} mostra uma mapa gerado contendo apenas informações sobre o que é terra (em preto) e o que é água (em branco). 
+
+
+\subsection{Visão micro e macro do mundo}
+\label{sec:visaomicromacro}
+
+Cada pixel da MM é mapeado para diversos pixels no mundo virtual. Uma consequência direta desse mapeamento desproporcional é a geração de grandes faixas de terra retilíneas; se fosse possível a geração de uma matriz com o tamanho exato do mundo virtual, ela conteria a resolução necessária para a ferramenta decidir com precisão se um determinado pixel é ou não terra, em uma proporção de 1:1 (um pixel da MM corresponde a um pixel do mundo virtual). Essa abordagem, porém, não é viável, visto que uma matriz com tais proporções consumiria muitos recursos para ser construída e processada. Embora a ferramenta permita que o tamanho da MM seja ajustado para qualquer valor arbitrário, testes realizados mostraram que um tamanho de {\tt 800x800} pixels é o bastante para que informações suficientes sejam processadas pelos demais algoritmos da ferramenta.
+
+A figura \ref{fig:ilustracao_mapeamento_macro} ilustra o resultado gráfico obtido pela ferramenta quando nenhum algoritmo extra de geração de conteúdo é utilizado para preencher os espaços retilíneos entre um mapeamento e outro.
+
+\begin{figure}
+\centering
+\resizebox{15cm}{!}{\includegraphics{figuras/ilustracao_mapeamento_macro.png}}
+\caption{Resultado gráfico obtido quando nenhum algoritmo extra de geração de conteúdo é utilizado para preencher as discrepâncias de mapeamento da MM}
+\label{fig:ilustracao_mapeamento_macro}
+\end{figure}
+
+Nessa ilustração está sendo mostrado um local no mundo virtual que representa a transição entre dois pontos diferentes da MM (um ponto de terra e outro ponto de água). Para explicar o que acontece, são necessárias duas suposições: 1) a ferramenta está desenhando o mundo na posição {\tt (x,y,z)}, que é o mapeamento do ponto {\tt (i,j)} na MM, e 2) esse mapeamento corresponde a uma faixa de água. À medida que a ferramenta incrementa a coordenada do mundo para poder desenhá-lo, supondo {\tt (x + 1,y,z)}, esse ponto também é mapeado para a MM. Se o resultado do mapeamento da coordenada {\tt (x + 1,y,z)} ainda for o ponto {\tt (i,j)} na MM, então a ferramenta irá novamente desenhar um pixel de água na tela. Supondo que somente no ponto {\tt (x + 10,y,z)} o mapeamento mude na MM para {\tt (i + 1,j)} (e que esse ponto na MM seja terra), então todos os pontos anteriores a esse serão água e todos os pontos seguintes serão terra (até que o mapeamento na MM mude novamente).
+
+A figura mostra claramente o momento em que o mapeamento na MM muda, que é quando a ferramenta substitui a renderização da água pela renderização da terra. Como não há algoritmos de geração de conteúdo atuando nessa transição, o usuário andará por essa linha reta da costa e não verá qualquer alteração em sua forma ou direção, a menos que outra quebra de mapeamento seja encontrada. Nesse caso, o usuário poderá ver outra costa retilínea perpendicular à aquela que ele está seguindo ou outra costa no mesmo sentido (que é a continuação da costa atual).
+
+
+\subsection{Quebra de linearidade da costa}
+\label{sec:quebralinearidade}
+
+O mapeamento dos pixels do mundo virtual com as informações da MM em baixa resolução resulta em efeitos gráficos muito irreais. As praias naturais possuem uma curvatura característica e dificilmente terão um comprimento de 20Km em um configuração perfeitamente retilínea, como as praias geradas pela ferramenta. Embora o objetivo do presente trabalho não seja criar paisagens fotorrealistas, praias tão irreais não são aceitáveis. Para contornar esse problema, criou-se uma forma de quebrar a linearidade da costa através da adição de conteúdo aos locais onde o mapeamento da MM é calculado entre dois pontos, um de água e outro de terra. O funcionamento do algoritmo é descrito a seguir.
+
+A MM possui a descrição completa do que é terra e do que é água no mundo virtual. Cada um de seus pixels possui um descritor associado, que informa aos demais algoritmos da ferramenta para qual tipo de terreno um pixel do mundo virtual está sendo mapeado na MM. Inicialmente a ferramenta foi criada com três tipos de terreno: água, terra (continente) e costa (terra em contato com a água). Depois que as faixas de terra são pré-processadas e essas informações são armazenadas na MM, exitem apenas informações sobre terra (continente) e água. Esse é o resultado criado pelo algoritmo de criação de mundos citado na seção ~\ref{sec:faixasterra}.
+
+A partir desse momento, o primeiro passo do algoritmo de quebra de linearidade da costa é executado. Utilizando como entrada a MM atual, o algoritmo varre cada um dos seus elementos, atualizando o descritor de informação dos pixeis que são costa. Um pixel é dito costa quando pelo menos um de seus vizinhos é água. Depois que o algoritmo termina o seu processamento, a MM contém os três tipos de terreno descritos anteriormente. O próximo passo para a quebra de linearidade da costa é a geração de conteúdo com base no descritor de informação de cada um dos pixels da MM. Quando a ferramenta estiver gerando conteúdo para desenhar na tela, o procedimento de geração testa qual o tipo de terreno que está descrito no mapeamento da MM para os pixels que ela está desenhando atualmente. Se o mapeamento terminar em um pixel da MM que é terra, então a função irá gerar um relevo para aquele ponto. Se o mapeamento terminar em um pixel da MM que é água, então a função irá gerar o relevo para o oceano (que é uma altura padrão representando o nível do mar). Se o mapeamento terminar em um pixel da MM que é costa, então a função irá criar alterações nas informações de terra/água nesse mapeamento, o que irá resultar em uma costa não-retilínea e mais realista. A figura ~\ref{fig:funcionamento_quebra_linearidade} ilustra o funcionamento do algoritmo.
+
+\begin{figure}
+\centering
+\resizebox{12cm}{!}{\includegraphics{figuras/funcionamento_quebra_linearidade.png}}
+\caption{Funcionamento do algoritmo de quebra de linearidade da costa}
+\label{fig:funcionamento_quebra_linearidade}
+\end{figure}
+
+Os pixels {\tt A} e {\tt B} da MM possuem um descritor de informação indicando que eles são costa. O {\tt Plano M} descreve a MM e o {\tt Plano V} descreve o resultado do mapeamento dela no mundo virtual, que é uma malha regular. Cada um dos blocos do {\tt Plano V} é composto por vários pixels, enquanto cada bloco do {\tt Plano M} corresponde a apenas um pixel da MM. Para fins de clareza, apenas os vértices e arestas da malha do bloco {\tt RA} estão sendo mostrados, essa informação foi ocultada nos demais blocos. O pixel {\tt C} da MM é mapeado para um bloco maciço de terra no {\tt Plano V}, já que o seu descritor informa à ferramenta que ele é um pixel de terra. O pixel {\tt A} seria mapeado para um bloco maciço de terra também, porém com a atuação do algoritmo de quebra de linearidade ele é mapeado para uma configuração diferenciada. No momento da geração de conteúdo para os pixels do mundo virtual que estão dentro do bloco {\tt RA}, o algoritmo de quebra de linearidade distorce as informações de terra/mar para cada um dos pixels, o que faz com que o bloco não seja composto inteiramente de pixels de terra.
+
+Para o processo de distorção das informações terra/mar, foi criado um algoritmo que pudesse gerar costas mais realistas, porém sem tirar do programador o controle sobre quanta terra e quanta água existirá dentro do bloco. Duas abordagens foram planejadas e estudadas para atingir esse resultado, porém apenas uma delas foi utilizada. Na abordagem descartada, a ferramenta identificaria quais são as quinas do bloco {\tt RA} que se tocam com alguma porção de terra (as quinas seriam os pontos {\tt S1} e {\tt S2} da figura ~\ref{fig:funcionamento_quebra_linearidade}). Depois que as quinas fossem identificadas, a ferramenta criaria uma linha entre elas e, então, a distorceria para criar uma linha não uniforme. Em seguida, uma sub MM seria criada, voltada exclusivamente para prover informações sobre terra/mar do bloco {\tt RA}. A sub MM seria criada com base nas quinas encontradas, na linha criada entre elas e nas informações de água/terra já existentes no bloco (o que evitaria que água fosse inserida para dentro do continente ao invés de uma nova costa ser criada). Um dos principais problemas dessa abordagem foi a complexidade para se criar uma linha de costa aceitável, visto que quanto mais complexa a abordagem, mais processamento era exigido, o que é proibitivo para uma ferramenta de tempo real. A ferramenta teria de desenhar uma linha entre as duas quinas à nível de matriz, ou seja, manipulando os pontos da sub MM criada. Isso poderia ter sido feito através de uma função de ruído ou de números aleatórios que deslocaria cada ponto da linha à medida que eles fossem inseridos, porém as linhas criadas poderiam apresentar falhas entre um pixel e outro, visto que existe um erro inerente no processo de desenho de curvas em um espaço pequeno de pixels. Além disso, existiria o custo computacional extra para que a ferramenta descobrisse onde está a terra e onde está o mar, afim de preencher as faixas de terra e água criadas na sub MM. Depois de descobrir a localização desses elementos, a sub MM teria de ser preenchida com terra e água, o que poderia ser um processo lento para uma MM de grandes proporções. Todo esse processo deveria ser realizado para cada um dos blocos do mundo virtual que fossem mapeados para costa na MM, o que exigiria ainda mais processamento e consumo de memória.
+
+A abordagem que foi adotada para o processo de distorção das informações também é baseada em ruídos e números aleatórios, porém sem a criação de uma sub MM explícita. Na abordagem adotada, a ferramenta utiliza uma função paramétrica para decidir o que é terra/mar dentro de um bloco que é mapeado para costa na MM. Utilizando como base a posição do pixel dentro do bloco {\tt RA}, a função mapeia essa informação para dentro de um espectro de valores criados a partir de uma função de ruído de Perlin. Em linhas gerais, o que a função faz é testar se o hash do pixel em questão está dentro ou fora do espectro, conforme ilustra a figura ~\ref{fig:plot_ruido_quebra_linearidade} (a); o processo pode ser imaginado como um teste de altura em um {\it heightmap} de pequenas proporções (que é criado como resultado do espectro de ruído): se o retorno da função de ruído para o pixel em questão for maior que um determinado valor (que é a granularidade do bloco sendo analiso), então ele é terra, caso contrário ele é água. Na figura ~\ref{fig:plot_ruido_quebra_linearidade}, a área clara mostra todos os pixels cujo hash é maior que o valor estipulado para granularidade do bloco; a área escura da figura, por sua vez, mostra todos os pixels cujo hash é menor que o valor usado como limite. Essa abordagem elimina a complexidade de desenho de linhas em sub matrizes, além de dar maior flexibilidade para a geração de conteúdo: quanto maior a granularidade do bloco, maior será a quantidade de terra no local.
+
+\begin{figure}
+\centering
+\resizebox{15cm}{!}{\includegraphics{figuras/plot_ruido_quebra_linearidade.png}}
+\caption{Representação gráfica do espectro de ruído utilizado para criação da costa, com diferentes níveis de granularidade. (a) Granularidade média. (b) Granularidade alta. (c) Granularidade muito alta. (d) Granularidade muito baixa.}
+\label{fig:plot_ruido_quebra_linearidade}
+\end{figure}
+
+A figura ~\ref{fig:plot_ruido_quebra_linearidade} (b) ilustra outro {\it heightmap} fictício gerado pela função de quebra de linearidade, porém com utilização alta granularidade. O bloco do mundo virtual que for mapeado para esse {\it heightmap} fictício apresentará uma costa diferenciada como resultado da existência de informações na base do {\it heightmap}, porém a alta granularidade gera uma ilha como efeito colateral (informação existente no topo do {\it heightmap}). Essa ilha gerada tem sua extensão terminada abruptamente (canto superior direito do bloco), porque a sua continuação está fora do bloco sendo mapeado. Quando essa ilha for renderizada pela ferramenta, o corte abrupto de conteúdo será amenizado pelo diferenciador de praias, que irá adicionar informações extra ao longo das praias retas afim de torná-las menos uniformes e mais realistas.
+
+A figura ~\ref{fig:plot_ruido_quebra_linearidade} (c) ilustra o caso no qual uma granularidade muito alta é utilizada. Como consequência, o algoritmo de quebra de linearidade da costa cria diversos trechos de terra espalhados pelo bloco ao invés de um único trecho mais compacto. Os efeitos colaterais da alta granularidade são diversos, como manutenção da costa retilínea já existente no local, criação pequenas ilhas próximas à costa e formação de lagos, esse último sendo causado quando duas ou mais faixas de terra geradas se mesclam entre si ou ao continente de forma parcial.
+
+A figura ~\ref{fig:plot_ruido_quebra_linearidade} (d) ilustra o caso no qual uma granularidade muito baixa é utilizada. Se a faixa de terrada gerada for muito pequena, o algoritmo pode quebrar a linearidade da costa apenas em um determinado local, que é onde existem informações no {\it heightmap} fictício gerado; além disso, é possível que a faixa gerada esteja longe do continente, o que irá produzir uma ilha, que terá a suas praias afetadas pelo diferenciador de praias.
+
+
+\subsection{Praias}
+
+A quebra de linearidade da costa elimina em grande parte o problema de linhas irreais nos continentes, porém o resultado final ainda tende para algo que não é aceitável na natureza. Quando a ferramenta está renderizando uma fatia do mundo, para cada pixels que é descrito como terra um relevo é associado a ele; o mesmo se aplica para os pixels que são descritos como água, porém nesse caso o revelo criado possui sempre a mesma altura (o nível do mar). Como uma consequência direta disso, se a ferramenta estiver desenhando um conjunto de pixels que descreve uma cadeia montanhosa e, logo em seguida, os próximos pixels são descritos como água, a paisagem resultante apresentará um "degrau". Isso acontece porque a cadeia montanhosa foi gerada muito próxima da água, o que faz com que a sua renderização seja abruptamente interrompida no momento que a ferramenta encontra água. Inicialmente a ferramenta não fazia qualquer tratamento para esse caso, o que resultava em costas repletas de falésias, que são um tipo de costa marítima formada por rochas escarpadas e ingrimes. Embora existam falésias no mundo real, elas não estão presentes em todas as costas, somente em algumas, diferentemente do que acontecia no mundo virtual gerado. Para contornar esse problema, criou-se um algoritmo capaz de gerar praias em determinadas áreas, o que torna a paisagem gerada mais realista.
+
+O algoritmo de criação de praias atua pouco antes do conteúdo ser renderizado para a tela. Depois que a ferramenta mapeia para a MM os pixels e depois que o algoritmo de quebra de linearidade da costa atua, o resultado é um {\it heightmap} pronto para ser renderizado. Antes de ser desenhado na tela, esse {\it heightmap} é tratado pelo algoritmo de criação de praias, como descrito na figura ~\ref{fig:funcionamento_algoritmo_praia}. O procedimento varre cada um dos pixels existentes no mapa e, para cada um deles, checa qual a distância que o pixel atual está de um pixel de tipo água à sua volta. A checagem é feita em quadro direções (direita, esquerda, cima e baixo), sendo que a ferramenta avança até encontrar um pixel água ou até que {\tt N} pixels sejam consultados. O valor de {\tt N} pode ser configurável, porém quanto maior ele for, mais processamento será exigido para a análise da vizinhança e maior será a praia gerada. Em seguida, as quatro distâncias até um pixel de tipo água são somadas e utilizadas em uma fórmula para o cálculo da altura da praia. Os resultados possíveis são os seguintes:
+
+ \begin{itemize}
+ \item Se o pixel analisado estiver à uma distância de {\tt 4N}, isso quer dizer que a ferramenta percorreu às quatro direções possíveis e não encontrou água. Nesse caso, o pixel em questão não tem a sua altura recalculada; esse caso descreve o que acontece com todos os pixels que estão dentro do continente ou na costa porém longe da água: eles não formam uma praia e sua altura é definida pela função de relevo principal;
+ 
+ \item Se o pixel analisado estiver à uma distância inferior a {\tt 4N}, então a sua altura será recalculada. Quanto maior for a distância calculada, maior será a altura do pixel, porém essa variação da altura é calculada dentro de um intervalo definido {\tt [T,B]}, onde {\tt T} é a altura máxima e {\tt B} é a altura mínima de uma praia, respectivamente. O resultado dessa abordagem é uma praia com declive.
+ \end{itemize}
+
+ 
+\begin{figure}
+\centering
+\resizebox{15cm}{!}{\includegraphics{figuras/funcionamento_algoritmo_praia.png}}
+\caption{Funcionamento do algoritmo de geração de praias}
+\label{fig:funcionamento_algoritmo_praia}
+\end{figure}
+ 
+
+\begin{figure}
+\centering
+\resizebox{15cm}{!}{\includegraphics{figuras/exemplo_praia_simples.png}}
+\caption{Praia gerada ao longo da costa}
+\label{fig:exemplo_praia_simples}
+\end{figure}
+
+A figura ~\ref{fig:exemplo_praia_simples} ilustra o resultado obtido com a geração de praias. Depois que essa abordagem foi colocada em prática, porém, a ferramenta apresentou uma queda brusca de desempenho. A razão dessa degradação são as iterações aplicadas para que água seja encontrada na vizinhança dos pixels. Para cada pixel desenhado na tela, a ferramenta deve fazer quatro iterações, sendo que para alguns pixels o limite máximo de iterações permitidas será atingido. Além disso, a solução apresentava outro problema ligado à geração de conteúdo sob-demanda, que fazia com que as praias sumissem e aparecessem conforme o usuário se movia. A explicação para o problema é que o algoritmo de geração de praia trabalhava apenas com os pixels que estavam dentro da fatia que a ferramenta recortou do mundo virtual; isso quer dizer que se o usuário se move e a água sai do campo de visão, todos os pixels que estão na fatia não tem mais água como vizinha, o que faz com que a praia seja removida.
+
+A solução encontrada para esses dois problemas foi utilizar uma nova abordagem para consulta dos pixels vizinhos. Em vez de iterar sobre cada um dos pixels em cada caminho em busca de água, a ferramenta faz um salto de distância {\tt N} a partir do pixel atual em cada um dos caminhos. Em termos práticos, é como se apenas uma iteração fosse realizada para cada uma das direções. Além disso, as informações do pixel consultado não são obtidas da fatia recortada, mas sim do mapeamento direto dele com a MM (ou com o seu respectivo mapeamento, no caso do pixel a ser analisado ser uma costa, caso que exige um mapeamento diferente).
+
+Utilizando a nova abordagem para geração da praia, o desempenho da aplicação teve um decréscimo em virtude do processamento extra que foi inserido, porém essa perda foi aceitável. Como o resultado obtido com a adição de praias superou a leve perda de desempenho, optou-se por manter essa funcionalidade.
+
+
+\subsection{Arquipélagos e praias diferenciadas}
+
+Utilizando os algoritmos de quebra de linearidade e criação de praias ao longo da costa, a ferramenta passou a gerar paisagens mais realistas. O resultado final em relação à costa e à praia, porém, apresentou um padrão muito definido, o que é incomum de acontecer no mundo real, no qual as linhas e paisagens naturais tendem a seguir um princípio aleatório ou menos padronizado. Se o usuário viajasse pelo mundo virtual apenas pela costa, ele veria praias com a mesma configuração (mesmo tamanho) e nenhuma ilha ou arquipélago ao longo do oceano. Para melhorar esse aspecto, criaram-se dois novos algoritmos que atuam na costa: um diferenciador de praias e um gerador de arquipélagos.
+
+O \textbf{diferenciador de praias} atua perturbando a distância utilizada para o cálculo dos pixels água vizinhos a um determinado pixel. Em vez de utilizar uma distância fixa {\tt N} para o cálculo da distância até a água, o diferenciador utiliza a posição do pixel como semente para uma função de ruído, que tem como retorno a nova distância que será utilizada nos cálculos. Utilizando essa técnica, o diferenciador é capaz de alterar o tamanho e forma da praia, o que faz com que determinadas regiões apresentem uma maior quantidade de areia do que outras. A figura ~\ref{fig:exemplo_praia_complexa} ilustra os resultados obtidos.
+
+\begin{figure}
+\centering
+\resizebox{15cm}{!}{\includegraphics{figuras/exemplo_praia_complexa.png}}
+\caption{Resultado obtido com a aplicação do diferenciador de praias}
+\label{fig:exemplo_praia_complexa}
+\end{figure}
+
+O \textbf{gerador de arquipélagos} atua criando novas faixas de terra em determinados pixels da MM. Depois que a MM é criada e todos os descritores de informação de cada um de seus pixels é configurado, o gerador de arquipélago itera sobre os pixels que representam a costa e, para alguns deles, adiciona a informação que essa região possui ilhas. No momento em que a ferramenta estiver renderizando os pixels que são mapeados para essa região da MM, o descritor de informação será consultado e a ferramenta saberá que essa região necessita de um conteúdo novo, além do conteúdo utilizado para a quebra de linearidade da costa. Esse conteúdo é criado utilizando a mesma abordagem do algoritmo de quebra de linearidade, porém utilizando como pixels de análise aqueles pixels que são água. Para cada pixel sendo analisado, a sua posição é utilizada como um hash que é testado contra um espectro criado por uma função de ruído. Os ruídos utilizados para esse espectro são diferentes daqueles do algoritmo de quebra de linearidade, visto que o resultado esperado são pequenas porções de terra, não um bloco maciço dela. Para conseguir esse efeito, aumentou-se o número de oitavas da função de ruído de Perlin e aumentou-se o limite que é utilizado nos testes para saber se o pixel é ou não terra. O resultado do gerador de arquipélagos é combinado com o o algoritmo de quebra de linearidade, o que faz com que as ilhas sejam geradas, em determinados casos, muito próximas à costa. O resultado final obtido com o gerador de arquipélagos são ilhas de diversos tamanhos ao longo da costa em determinados locais do mundo virtual. A figura ~\ref{fig:exemplo_ilha} ilustra os resultados obtidos.
+
+\begin{figure}
+\centering
+\resizebox{15cm}{!}{\includegraphics{figuras/exemplo_ilha.png}}
+\caption{Ilha obtida com o gerador de ilhas}
+\label{fig:exemplo_ilha}
+\end{figure}
