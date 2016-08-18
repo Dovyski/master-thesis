@@ -1,9 +1,13 @@
 Tool for real-time generation of coastlines for pseudo-infinite virtual worlds for 3D games
 ============================
 
+![Tool for real-time generation of coastlines for pseudo-infinite virtual worlds for 3D games](https://github.com/Dovyski/master-thesis/blob/master/figuras/teaser.png)
+
 Master thesis, Fernando Bevilacqua, July 2009. Defended on July 29, 2009. 
 
 _Contact:_ Fernando Bevilacqua <dovyski@gmail.com>
+
+_PDF version:_ [available here](https://github.com/Dovyski/master-thesis/raw/master/dissertacao.pdf) (in Brazilian Portuguese only)
 
 ## Citation
 
